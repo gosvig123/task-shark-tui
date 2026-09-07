@@ -66,6 +66,7 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 - Opening a **Task-backed Conversation** excluded by saved Tasks filters, or with a deleted task, keeps it in the Conversations **Service Tab** without changing Tasks navigation memory.
 - Task and **Agent Workspace** are fixed when a conversation is created.
 - Task title, notes, and due date can be edited in **Task Workspace** with explicit Save; task notes are separate from **Board Updates**.
+- The task editor keeps Title, Due date, and multiline Notes in one draft form. Tab/Shift-Tab moves focus; Ctrl-S or Save applies changes, and Escape or Cancel discards them. Enter in Notes adds a line, never saves.
 - Task edits update the current **Task Workspace** and future conversation snapshots, not the fixed task snapshot of an existing **Task-backed Conversation**.
 - Changing a source task's due date removes its Today reference without deleting the source task; tasks stored directly in Today remain there.
 - Saving a task date and removing its Today reference are separate operations; failed reference removal does not roll back the saved date.

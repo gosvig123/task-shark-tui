@@ -1,16 +1,15 @@
-import { directTodayNotice, todayList } from '../task-today.js';
+import { todayList } from '../task-today.js';
 import { taskKey } from './navigation-memory.js';
 import { recoverToday, removeDemoToday } from './task-today.js';
 import type { Task } from '../model.js';
 import type { Config } from '../config.js';
 import { loadTaskSnapshot } from '../task-api.js';
-import { changesFor, editable, rebaseEdits, updateTask, type TaskEdits } from '../task-edit.js';
+import { changesFor, editable, rebaseEdits, updateTask } from '../task-edit.js';
 import { deduplicate } from '../tasks.js';
-import { choose, choicePanel, textInput } from './dialogs.js';
+import { choose } from './dialogs.js';
 import { refreshTasks } from './refresh.js';
 import type { View } from './view.js';
-interface Editor { original: Task; draft: TaskEdits; blocked: boolean; notice: string }
-const labels = { title: 'Title', description: 'Notes', dueDate: 'Due date (YYYY-MM-DD; blank clears)' };
+import { taskEditForm, type TaskEditor as Editor } from './task-edit-form.js';
 export function replaceCatalogTask(view: View, task: Task): void {
   for (const [list, tasks] of view.catalog.byList) view.catalog.byList.set(list, tasks.map(t =>
     t.id === task.id && t.ownerList === task.ownerList ? { ...structuredClone(task), placement: t.placement } : t));
@@ -31,36 +30,16 @@ export async function editTask(view: View, config: Config): Promise<void> {
   view.notice = 'Loading current task details…'; view.render();
   try {
     const original = await latest(view, config, view.taskScope);
-    const editor: Editor = { original, draft: editable(original), blocked: false, notice: 'Choose a field. Blank notes/date clears it. Save applies only changed fields.' };
+    const editor: Editor = { original, draft: editable(original), blocked: false, notice: 'Edit fields, then Save. Only changed fields are applied.' };
     await editLoop(view, config, editor);
   } finally { view.workspaceFocus = focus; }
 }
 async function editLoop(view: View, config: Config, editor: Editor): Promise<void> {
-  for (;;) {
-    const fields = Object.keys(labels) as (keyof TaskEdits)[];
-    const choices = fields.map(field => `${labels[field]}: ${editor.draft[field].replace(/\n/g, ' ').slice(0, 45) || '(empty)'}`);
-    choices.push(editor.blocked ? 'Review latest source' : 'Save', 'Cancel');
-    const choice = await editChoice(view, editor, choices);
-    if (!choice || choice === 'Cancel') { view.notice = 'Task edit cancelled. Nothing else written.'; return; }
-    try {
-      if (choice === 'Save' && await save(view, config, editor)) return;
-      else if (choice === 'Review latest source') await reviewSource(view, config, editor);
-      else if (choices.indexOf(choice) < fields.length) {
-        const field = fields[choices.indexOf(choice)];
-        const value = await textInput(view.screen, labels[field], editor.draft[field], field === 'description');
-        if (value !== undefined) editor.draft[field] = value;
-      }
-    } catch (error) { editor.notice = String(error); }
-  }
-}
-function editChoice(view: View, editor: Editor, choices: string[]): Promise<string | undefined> {
-  return new Promise(resolve => {
-    const { panel, list, body } = choicePanel(view.screen, 'Edit task · ' + editor.original.title, choices, editor.notice + (editor.original.ownerList === todayList ? '\n\n' + directTodayNotice : ''));
-    list.height = choices.length; if (body) body.bottom = choices.length + 2;
-    const finish = (choice?: string) => { panel.destroy(); view.screen.render(); resolve(choice); };
-    list.on('select', (_item, index: number) => finish(choices[index]));
-    list.key('escape', () => finish()); list.focus(); view.screen.render();
+  const saved = await taskEditForm(view.screen, editor, async () => {
+    if (editor.blocked) { await reviewSource(view, config, editor); return false; }
+    return save(view, config, editor);
   });
+  if (!saved) view.notice = 'Task edit cancelled. Nothing else written.';
 }
 async function save(view: View, config: Config, editor: Editor): Promise<boolean> {
   const changes = changesFor(editor.original, editor.draft);

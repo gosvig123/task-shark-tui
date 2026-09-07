@@ -12,9 +12,12 @@ navigation = runpy.run_path('scripts/pty-navigation-smoke.py')
 creation = navigation['creation']
 key, drain, frame = navigation['key'], navigation['drain'], navigation['frame']
 DOWN = '\x1b[B'
+focus = 0
 
 
 def open_editor(fd, root):
+    global focus
+    focus = 0
     key(fd, 'e')
     for _ in range(50):
         text = Path(root, 'frame.txt').read_text()
@@ -25,8 +28,11 @@ def open_editor(fd, root):
 
 
 def field(fd, index, value, multiline=False):
-    key(fd, DOWN * index + '\r')
-    key(fd, '\x15' + value + ('\x13' if multiline else '\r'))
+    global focus
+    target = [0, 2, 1][index]
+    key(fd, '\t' * ((target - focus) % 5))
+    focus = target
+    key(fd, '\x15' + value)
 
 
 def mutations(root):
@@ -35,52 +41,63 @@ def mutations(root):
 
 def edit(fd, root):
     creation['startup'](fd, root); key(fd, '\r'); open_editor(fd, root)
-    assert 'Title: Fix calendar sync' in frame(root, 'edit-prefilled')
+    text = frame(root, 'edit-prefilled')
+    assert all(label in text for label in ['Fix calendar sync', 'Title', 'Due date', 'Notes', '[ Save ]', '[ Cancel ]'])
+    key(fd, '\x1b[Z'); assert '▶ [ Cancel ]' in frame(root, 'edit-reverse-tab')
+    key(fd, '\t')
     key(fd, '\x1b'); assert mutations(root) == []
-    open_editor(fd, root); key(fd, DOWN * 3 + '\r'); assert mutations(root) == []
+    open_editor(fd, root); key(fd, '\x13'); assert mutations(root) == []
     open_editor(fd, root); field(fd, 0, 'Edited task')
     field(fd, 1, 'Multiline edit\rSecond line', True); field(fd, 2, '2026-02-30')
-    key(fd, DOWN * 3 + '\r'); assert mutations(root) == []
+    key(fd, '\x13'); assert mutations(root) == []
     assert 'real date' in frame(root, 'edit-invalid-date')
-    field(fd, 2, '2027-04-15'); key(fd, DOWN * 3 + '\r'); drain(fd, .7)
+    field(fd, 2, '2027-04-15'); key(fd, '\x13'); drain(fd, .7)
     text = frame(root, 'edit-100-saved')
     assert 'Edited task' in text and 'Multiline edit' in text and '2027-04-15' in text
     assert len(mutations(root)) == 1
     creation['resize'](fd, 70, 24); drain(fd, .5)
     assert 'Edited task' in frame(root, 'edit-70-saved')
-    open_editor(fd, root); field(fd, 1, '', True); field(fd, 2, ''); key(fd, DOWN * 3 + '\r'); drain(fd, .5)
+    open_editor(fd, root); field(fd, 1, '', True); field(fd, 2, ''); key(fd, '\x13'); drain(fd, .5)
     text = frame(root, 'edit-70-cleared'); assert 'No notes.' in text and 'No date' in text
     key(fd, '\x1b'); assert 'Edited task' in frame(root, 'edit-back-list')
     state = json.loads(Path(root, 'state.json').read_text()); assert state['currentList'] == 'Empty list'
 
 
 def cursor_edit(fd, root):
-    key(fd, '\r'); open_editor(fd, root); key(fd, '\r')
-    key(fd, '\x01' + '\x1b[C' * 7 + '\x1b[3~' + 'T' + '\x05' + 'X\x7f!\r')
-    field(fd, 2, '2026-09-07'); key(fd, DOWN * 2 + '\r')
+    key(fd, '\r'); open_editor(fd, root)
+    key(fd, '\x01' + '\x1b[C' * 7 + '\x1b[3~' + 'T' + '\x05' + 'X\x7f!')
+    field(fd, 2, '2026-09-07')
     key(fd, '\x1b[1;5D' + '\x1b[3~' * 2 + '15')
     key(fd, '\x1b[H\x1b[1;5C' + '\x1b[3~' * 2 + '10')
     key(fd, '\x1b[F\x1b[D\x7f1\x1b[C')
+    creation['resize'](fd, 100, 30); drain(fd, .3)
     text = frame(root, 'cursor-date'); assert '2026-10-15' in text
+    creation['resize'](fd, 70, 24); drain(fd, .3)
+    text = frame(root, 'edit-form-70')
+    assert all(label in text for label in ['2026-10-15', 'Title', 'Notes', '[ Save ]', '[ Cancel ]'])
     raw = Path(root, 'frame.txt').read_text(); Path('/tmp/task-shark-cursor-date.ansi').write_text(raw)
     assert re.search(r'\x1b\[[0-9;]*7(?:;[0-9]+)*m', raw)
-    key(fd, '\r'); key(fd, DOWN + '\r')
-    key(fd, 'First 🦈 line\rSecond cafe\u0301\x01\x1b[1;5Cnew \x05\x7fé')
-    frame(root, 'cursor-notes'); key(fd, '\x13'); key(fd, DOWN * 3 + '\r'); drain(fd, .5)
+    field(fd, 1, 'First 🦈 line\rSecond café')
+    key(fd, '\x01\x1b[1;5Cnew \x05\x7fé')
+    frame(root, 'cursor-notes'); key(fd, '\x13'); drain(fd, .5)
     state = json.loads(Path(root, 'state.json').read_text())
     task = next(t for t in state['byList']['Work'] if t['id'] == 'calendar')
     assert task['title'] == 'Edited Task!' and task['dueDate'] == '2026-10-15'
     assert task['description'] == 'First 🦈 line\nSecond new café'
-    open_editor(fd, root); key(fd, '\r'); key(fd, '\x01Discarded'); key(fd, '\x1b'); key(fd, '\x1b')
+    open_editor(fd, root); key(fd, '\x01Discarded'); key(fd, '\x1b')
     key(fd, '\x1b')
 
 
 def conflict(fd, root):
     before = len(mutations(root))
     key(fd, '\r'); open_editor(fd, root); field(fd, 0, 'Retained conflicted title')
-    Path(root, 'mode').write_text('conflict'); key(fd, DOWN * 3 + '\r')
+    Path(root, 'mode').write_text('conflict'); key(fd, '\x13')
     text = frame(root, 'edit-conflict')
     assert 'Retained conflicted title' in text and 'Review latest source' in text
+    key(fd, '\x13'); assert 'Retained draft' in frame(root, 'edit-source-review')
+    key(fd, DOWN + '\r')
+    assert 'Retained conflicted title' in frame(root, 'edit-rebased')
+    assert '[ Save ]' in frame(root, 'edit-rebased')
     key(fd, '\x1b'); Path(root, 'mode').unlink()
     assert len(mutations(root)) == before + 1
 
@@ -90,7 +107,7 @@ def demo():
         pid, fd = navigation['workspace']['start'](root)
         try:
             drain(fd, 1); key(fd, 't'); key(fd, '\r'); open_editor(fd, root)
-            field(fd, 0, 'Memory-only task'); key(fd, DOWN * 3 + '\r')
+            field(fd, 0, 'Memory-only task'); key(fd, '\x13')
             assert 'Memory-only task' in frame(root, 'edit-demo')
             assert not Path(root, 'calls.jsonl').exists() and not Path(root, 'board').exists()
             creation['smoke']['stop'](pid, fd)
@@ -111,7 +128,7 @@ def edit_today(fd, root, mode):
         assert 'stored directly in Today' in frame(root, 'today-direct-before-save')
     field(fd, 2, datetime.now(timezone.utc).date().isoformat())
     if mode == 'remove-conflict': Path(root, 'mode').write_text(mode)
-    key(fd, DOWN * 3 + '\r'); drain(fd, .7)
+    key(fd, '\x13'); drain(fd, .7)
     if mode == 'remove-conflict':
         assert 'removal pending' in frame(root, 'today-removal-pending')
         Path(root, 'mode').unlink(); open_editor(fd, root); key(fd, DOWN + '\r'); drain(fd, .7)
