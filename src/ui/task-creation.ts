@@ -1,0 +1,53 @@
+import { randomUUID } from 'node:crypto';
+import type { Config } from '../config.js';
+import { createTask, type TaskDraft } from '../task-api.js';
+import { deduplicate } from '../tasks.js';
+import { choose, textInput } from './dialogs.js';
+import { refreshTasks } from './refresh.js';
+import { chooseSourceList } from './list-search.js';
+import { Tab, type View } from './view.js';
+import { TaskFilter } from './task-filters.js';
+
+async function taskListsReady(view: View, config: Config): Promise<boolean> {
+  if (view.refreshing) { view.notice = 'Task Lists are loading. Try again when the refresh finishes.'; return false; }
+  await refreshTasks(view, config);
+  return (config.demo || config.allowTaskReset) && view.catalog.lists.length > 0 && !view.notice.startsWith('Tasks unavailable:');
+}
+export async function selectTaskList(view: View, config: Config): Promise<void> {
+  if (!await taskListsReady(view, config)) return;
+  const options = ['All Lists', ...view.catalog.lists.map(name => `List: ${name}`)];
+  const selected = await chooseSourceList(view.screen, 'Task List filter · does not change Active Task List', options);
+  if (selected === undefined) return;
+  view.switchTab(Tab.tasks);
+  view.listFilter = selected === options[0] ? undefined : selected.slice(6);
+}
+export async function createTaskFromView(view: View, config: Config): Promise<void> {
+  if (!await taskListsReady(view, config)) return;
+  const draft = await taskDraft(view);
+  if (!draft) { view.notice = 'Task draft discarded. Nothing created.'; return; }
+  const result = config.demo ? createDemoTask(view, draft) : await createTask(config.tasks, draft, config.allowTaskReset);
+  if (result.snapshot) view.catalog.byList.set(draft.list, result.snapshot.tasks);
+  view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
+  view.switchTab(Tab.tasks); view.listFilter = draft.list; view.taskFilter = TaskFilter.all;
+  view.notice = result.notice;
+}
+async function taskDraft(view: View): Promise<TaskDraft | undefined> {
+  const preferred = view.listFilter && view.listFilter !== 'today' ? view.listFilter : view.catalog.currentList;
+  const lists = [...view.catalog.lists].sort((a, b) => Number(b === preferred) - Number(a === preferred));
+  const list = await chooseSourceList(view.screen, `New Task · source list (default: ${preferred})`, lists);
+  if (list === undefined) return;
+  const title = await textInput(view.screen, 'New Task · title (required)');
+  if (!title?.trim()) return;
+  const description = await textInput(view.screen, 'New Task · notes (optional)', '', true);
+  if (description === undefined) return;
+  const confirmed = await choose(view.screen, 'Save new Pending task?', ['Cancel', 'Create pending task'],
+    `Task List: ${list}\nTitle: ${title.trim()}\n\n${description || 'No notes.'}`);
+  if (confirmed !== 'Create pending task') return;
+  return { list, title: title.trim(), description };
+}
+function createDemoTask(view: View, draft: TaskDraft) {
+  const task = { id: randomUUID(), title: draft.title, description: draft.description,
+    ownerList: draft.list, completed: false, subtasks: [] };
+  view.catalog.byList.get(draft.list)!.push(task);
+  return { confirmed: true, snapshot: undefined, notice: `Created Pending demo task in ${draft.list}; kept in memory only.` };
+}

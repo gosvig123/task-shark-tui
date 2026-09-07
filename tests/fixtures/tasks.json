@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "revision": "fixture-only",
+  "tasks": [
+    { "id": "calendar", "title": "Fix calendar sync", "completed": false,
+      "ownerList": "Work", "placement": "direct", "dueDate": "2026-09-10",
+      "description": "Two subscriptions.\nPreserve cancelled meeting rules.",
+      "subtasks": [{ "id": "child", "title": "Check cancelled events", "completed": false }] },
+    { "id": "calendar", "title": "Today reference", "completed": false,
+      "ownerList": "Work", "placement": "reference", "subtasks": [] }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "task-shark-tui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Task Shark terminal workbench with Pi RPC conversations",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "demo": "tsx src/main.ts --demo",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "check:limits": "tsx scripts/check-limits.ts && python3 scripts/check-files.py",
+    "smoke": "python3 scripts/pty-smoke.py && python3 scripts/pty-review-smoke.py && python3 scripts/pty-creation-smoke.py && python3 scripts/pty-list-search-smoke.py && python3 scripts/pty-draft-smoke.py",
+    "check:local": "tsx scripts/check-local.ts",
+    "check:resume": "tsx scripts/check-pi-resume.ts"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-tui": "0.85.1",
+    "blessed": "0.1.81",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/blessed": "^0.1.25",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
