@@ -18,7 +18,7 @@ export function editorLines(editor: CursorEditor, width: number): { lines: strin
   return { lines, row };
 }
 export function cursorInput(screen: Widgets.Screen, options: Widgets.BoxOptions, prefill: string,
-  multiline: boolean, clean: (text: string) => string): Promise<string | undefined> {
+  multiline: boolean, clean: (text: string) => string, command?: (key: EditorKey) => boolean): Promise<string | undefined> {
   return new Promise(resolve => {
     const previous = screen.focused, grabbed = screen.grabKeys;
     const input = blessed.box({ ...options, tags: false, wrap: false, scrollable: false });
@@ -36,7 +36,7 @@ export function cursorInput(screen: Widgets.Screen, options: Widgets.BoxOptions,
     };
     input.on('keypress', (ch: string, key: EditorKey = {}) => {
       if (key.name === 'escape') { finish(); return; }
-      if ((key.ctrl && key.name === 's') || (!multiline && key.name === 'enter')) { finish(editor.value); return; }
+      if (command?.(key) || (key.ctrl && key.name === 's') || (!multiline && key.name === 'enter')) { finish(editor.value); return; }
       editor.key(clean(ch ?? ''), key); draw();
     });
     screen.grabKeys = true; input.focus(); screen.on('resize', draw); draw();

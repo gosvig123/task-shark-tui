@@ -13,7 +13,7 @@ export async function textInput(screen: Widgets.Screen, title: string, prefill =
     height: multiline ? '70%' : 7, border: 'line', style: { border: { fg: 'cyan' } },
     label: safe(` ${title} `), tags: false });
   blessed.text({ parent: box, bottom: 0, left: 1, height: 2,
-    content: '←/→ · Ctrl-←/→ words · Home/End · Ctrl-U clear\n' +
+    content: '←/→ · Home/End · Ctrl-W delete word · Ctrl-U clear all\n' +
       (multiline ? 'Ctrl-S submit · Enter newline · Esc cancel' : 'Enter / Ctrl-S submit · Esc cancel') });
   try {
     return await cursorInput(screen, { parent: box, top: 1, left: 1, right: 1, bottom: 3,

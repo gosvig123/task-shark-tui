@@ -54,7 +54,7 @@ function draw(form: Form, state: TaskFormState, screen: Widgets.Screen, busy: bo
   form.panel.setLabel(` Edit task${changed ? ' · Unsaved changes' : ''} `);
   form.notice.setContent(safe((busy ? 'Working…' : editor.notice) + (editor.original.ownerList === todayList ? '\n' + directTodayNotice : '')));
   const save = editor.blocked ? 'Review latest source' : 'Save';
-  form.actions.setContent(`${state.focus === 3 ? '▶' : ' '} [ ${save} ]    ${state.focus === 4 ? '▶' : ' '} [ Cancel ]\nTab / Shift-Tab fields · Ctrl-S ${editor.blocked ? 'review' : 'save'} · Esc cancel\n←/→ cursor · Home/End · Ctrl-U clear`);
+  form.actions.setContent(`${state.focus === 3 ? '▶' : ' '} [ ${save} ]    ${state.focus === 4 ? '▶' : ' '} [ Cancel ]\nTab / Shift-Tab fields · Ctrl-S ${editor.blocked ? 'review' : 'save'} · Esc cancel\n←/→ cursor · Home/End · Ctrl-W word · Ctrl-U clear all`);
   screen.render();
 }
 export function taskEditForm(screen: Widgets.Screen, editor: TaskEditor, submit: () => Promise<boolean>): Promise<boolean> {

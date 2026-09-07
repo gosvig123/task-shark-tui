@@ -18,7 +18,7 @@ function setup(options = lists) {
   assert.equal(screen.focused.style.selected.fg, 'black');
   assert.equal(screen.focused.style.selected.bg, 'yellow');
   assert.equal(screen.focused.style.selected.bold, true);
-  const key = (name: string, text = '', ctrl = false) => screen.focused.emit('keypress', text, { name, ctrl });
+  const key = (name: string, text = '', ctrl = false, meta = false) => screen.focused.emit('keypress', text, { name, ctrl, meta });
   const close = () => { screen.destroy(); input.destroy(); output.destroy(); };
   return { result, key, close };
 }
@@ -50,6 +50,16 @@ test('list-search: filter choices search list names and retain All Lists', async
     all.key('a', 'all'); all.key('enter');
     assert.equal(await all.result, 'All Lists');
   } finally { all.close(); }
+});
+test('list-search: cursor editing and word deletion use the shared editor', async () => {
+  const ui = setup();
+  try {
+    ui.key('w', 'work wrong'); ui.key('w', '', true);
+    ui.key('backspace'); ui.key('home'); ui.key('d', '', false, true);
+    ui.key('w', 'wrong'); ui.key('backspace', '', false, true);
+    ui.key('w', 'work'); ui.key('left'); ui.key('delete'); ui.key('k', 'k'); ui.key('enter');
+    assert.equal(await ui.result, 'Work');
+  } finally { ui.close(); }
 });
 test('list-search: Escape cancels an unmatched search', async () => {
   const ui = setup();

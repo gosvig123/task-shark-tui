@@ -1,7 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CursorEditor } from '../src/ui/cursor-editor.js';
+import { CursorEditor, type EditorKey } from '../src/ui/cursor-editor.js';
 import { editorLines } from '../src/ui/cursor-input.js';
+
+const backward: EditorKey[] = [{ ctrl: true, name: 'w' }, { meta: true, name: 'backspace' }, { ctrl: true, name: 'backspace' }];
+const forward: EditorKey[] = [{ meta: true, name: 'd' }, { ctrl: true, name: 'delete' }, { meta: true, name: 'delete' }];
+for (const key of backward) test(`previous word: ${JSON.stringify(key)}`, () => {
+  const editor = new CursorEditor('Keep café🦈!\n suffix', true);
+  editor.cursor = 13; editor.key('', key);
+  assert.equal(editor.value, 'Keep suffix'); assert.equal(editor.cursor, 5);
+  editor.key('', key); assert.equal(editor.value, 'suffix'); assert.equal(editor.cursor, 0);
+  editor.key('', key); assert.equal(editor.value, 'suffix');
+});
+for (const key of forward) test(`next word: ${JSON.stringify(key)}`, () => {
+  const editor = new CursorEditor('Keep 🦈!\ne\u0301lan suffix', true);
+  editor.cursor = 4; editor.key('', key);
+  assert.equal(editor.value, 'Keep suffix'); assert.equal(editor.cursor, 4);
+  editor.cursor = editor.text.length; editor.key('', key); assert.equal(editor.value, 'Keep suffix');
+});
+test('clear all removes multiline text on both sides of the cursor; empty deletes are safe', () => {
+  const editor = new CursorEditor('First\nSecond\nThird', true); editor.cursor = 7;
+  editor.key('', { ctrl: true, name: 'u' });
+  assert.equal(editor.value, ''); assert.equal(editor.cursor, 0);
+  for (const key of [...backward, ...forward]) editor.key('', key);
+  assert.equal(editor.value, ''); assert.equal(editor.cursor, 0);
+});
 
 test('date groups support Ctrl-arrows and insertion/deletion without replacing the field', () => {
   const editor = new CursorEditor('2026-09-07', false);

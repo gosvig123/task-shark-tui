@@ -64,7 +64,7 @@ function drawSearch(view: View, input: blessed.Widgets.BoxElement, editor: Curso
   input.width = Math.max(24, Math.floor(Number(view.screen.width) * .32)) - 2;
   const layout = editorLines(editor, Math.max(2, Number(input.width) - 2));
   input.setContent('/ ' + layout.lines[layout.row]); input.setFront();
-  view.footer.setContent(' Search tasks · type to filter · ←/→ cursor · Ctrl-U clear\n Enter / Escape returns to task selector; query is kept.');
+  view.footer.setContent(' Search tasks · type to filter · ←/→ cursor · Ctrl-W word · Ctrl-U clear all\n Enter / Escape returns to task selector; query is kept.');
   view.screen.render();
 }
 

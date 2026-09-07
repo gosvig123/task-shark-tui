@@ -1,5 +1,6 @@
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 export function characters(text: string): string[] { return [...segmenter.segment(text)].map(s => s.segment); }
+const isWord = (text: string) => /[\p{L}\p{N}_]/u.test(text);
 export interface EditorKey { name?: string; ctrl?: boolean; meta?: boolean; shift?: boolean }
 export class CursorEditor {
   text: string[];
@@ -14,6 +15,8 @@ export class CursorEditor {
   key(ch: string, key: EditorKey): void {
     const name = key.name;
     if (key.ctrl && name === 'u') { this.text = []; this.cursor = 0; return; }
+    if ((key.ctrl && name === 'w') || ((key.ctrl || key.meta) && name === 'backspace')) { this.deleteWord(-1); return; }
+    if ((key.meta && name === 'd') || ((key.ctrl || key.meta) && name === 'delete')) { this.deleteWord(1); return; }
     if (name === 'home' || (key.ctrl && name === 'a')) { this.cursor = key.ctrl && name === 'home' ? 0 : this.lineStart(); return; }
     if (name === 'end' || (key.ctrl && name === 'e')) { this.cursor = key.ctrl && name === 'end' ? this.text.length : this.lineEnd(); return; }
     if (key.ctrl && (name === 'left' || name === 'right')) { this.word(name === 'left' ? -1 : 1); return; }
@@ -34,14 +37,23 @@ export class CursorEditor {
     while (offset < prefix.length) offset += this.text[this.cursor++].length;
   }
   private word(direction: number): void {
-    const word = (text: string) => /[\p{L}\p{N}_]/u.test(text);
     if (direction < 0) {
-      while (this.cursor && !word(this.text[this.cursor - 1])) this.cursor--;
-      while (this.cursor && word(this.text[this.cursor - 1])) this.cursor--;
+      while (this.cursor && !isWord(this.text[this.cursor - 1])) this.cursor--;
+      while (this.cursor && isWord(this.text[this.cursor - 1])) this.cursor--;
     } else {
-      while (this.cursor < this.text.length && word(this.text[this.cursor])) this.cursor++;
-      while (this.cursor < this.text.length && !word(this.text[this.cursor])) this.cursor++;
+      while (this.cursor < this.text.length && isWord(this.text[this.cursor])) this.cursor++;
+      while (this.cursor < this.text.length && !isWord(this.text[this.cursor])) this.cursor++;
     }
+  }
+  private deleteWord(direction: number): void {
+    const origin = this.cursor;
+    if (direction < 0) this.word(-1);
+    else {
+      while (this.cursor < this.text.length && !isWord(this.text[this.cursor])) this.cursor++;
+      while (this.cursor < this.text.length && isWord(this.text[this.cursor])) this.cursor++;
+    }
+    const start = Math.min(origin, this.cursor);
+    this.text.splice(start, Math.abs(this.cursor - origin)); this.cursor = start;
   }
   private vertical(direction: number): void {
     const start = this.lineStart(), end = this.lineEnd(), column = this.cursor - start;

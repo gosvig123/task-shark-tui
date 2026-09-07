@@ -53,8 +53,8 @@ in memory until quit; it never writes a task file.
    `/` focuses inline search; typing narrows tasks and updates all panes. Enter or Escape keeps the query and selection.
    Press `n` in the task selector for a task, or in Conversations for a Task-backed Conversation. In the
    global Conversations tab, `n` opens an empty General Conversation draft.
-   The transcript and inline composer start empty; type immediately. `Ctrl-O`
-   opens optional title, Agent Workspace, and `provider/model` settings.
+   The transcript and inline composer start empty; type immediately. `Ctrl-O` edits title/model,
+   `Ctrl-T` selects a task, and `Ctrl-G` selects the Agent Workspace.
 4. Write the first message. `Ctrl-S` saves the conversation and sends; `Enter` adds
    a line. Only then can a blank workspace create a private directory and Pi start.
    Escape in the inline composer discards the draft and returns to navigation.
@@ -104,8 +104,8 @@ While the draft composer is focused, letters (including navigation shortcuts)
 are message text. Escape discards it before navigation or quit.
 
 Modal text fields support Left/Right (`Ctrl-B/F`), Home/End (`Ctrl-A/E`), and
-Ctrl-Left/Right word movement. Backspace/Delete edit at the cursor; Ctrl-U clears.
-Enter submits single-line fields; Ctrl-S submits notes. Escape cancels.
+Ctrl-Left/Right moves by word. Ctrl-W / Alt-Backspace / Ctrl-Backspace deletes the previous word; Alt-D / Ctrl-Delete deletes the next word.
+Ctrl-U clears the whole input. These keys work in messages, task fields, searches, and pickers. Enter submits single-line fields; Ctrl-S submits notes. Escape cancels.
 In a Pi Request, `Escape` sends a cancellation. Confirmation dialogs default to No.
 Their wrapped details scroll with `PageUp`/`PageDown` and `Home`/`End`; Up/Down selects
 No/Yes separately. Task refresh runs in the background, without blocking these controls.

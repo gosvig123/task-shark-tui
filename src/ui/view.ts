@@ -92,7 +92,7 @@ export class View {
     this.header.setContent(safe(` TASK SHARK · Task Workspace · c/t/r tabs · ${this.workspaceReturn?.listFilter ?? this.listFilter ?? 'All Lists'}\n ${this.taskScope?.title ?? 'No tasks match'} · ${this.workspaceSection} · ${this.workspaceReturn?.taskFilter ?? this.taskFilter} · Search: ${this.workspaceReturn?.query ?? this.query}`));
     this.detail.setContent(this.draft ? safe(`New Conversation · unsaved\nTask: ${this.taskScope?.title ?? 'No tasks match'}\nAgent Workspace: ${this.draft.workspace || 'New private directory (created on send)'}`) : workspaceContent(this));
     if (this.follow) this.detail.setScrollPerc(!this.draft && this.workspaceSection === 'Conversations' && this.current()?.conversation ? 100 : 0);
-    this.footer.setContent(safe(this.draft ? ' New Conversation · unsaved\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings\n Esc discard' : workspaceFooter(this))); this.footer.style.fg = 'default';
+    this.footer.setContent(safe(this.draft ? ' New Conversation · unsaved\n Ctrl-S send · Ctrl-T task · Ctrl-G workspace · Ctrl-O settings\n Esc discard' : workspaceFooter(this))); this.footer.style.fg = 'default';
     restoreScroll(this); this.screen.render();
   }
   render(): void {
@@ -110,11 +110,11 @@ export class View {
     const reviews = conversations.filter(c => c.status === Status.review).length;
     const needs = conversations.filter(c => c.status === Status.needsInput).length;
     this.header.setContent(safe(` TASK SHARK ${this.runtime.store.demo ? '· OFFLINE DEMO' : '· LIVE PI'}   [c] Conversations   [t] Tasks   [r] For Review (${reviews})\n ${this.tab} · Needs Input ${needs}${this.query ? ` · Search: ${this.query}` : ''}`));
-    const detail = this.draft ? `New Conversation · unsaved\nTask: ${this.draft.task ? this.draft.task.title + ' · ' + this.draft.task.ownerList : 'General (no task)'}\nAgent Workspace: ${this.draft.workspace || 'New private directory (created on send)'}\n\nCtrl-T choose task · Ctrl-W choose workspace\nCtrl-O title and model` : row?.conversation ?
+    const detail = this.draft ? `New Conversation · unsaved\nTask: ${this.draft.task ? this.draft.task.title + ' · ' + this.draft.task.ownerList : 'General (no task)'}\nAgent Workspace: ${this.draft.workspace || 'New private directory (created on send)'}\n\nCtrl-T choose task · Ctrl-G choose workspace\nCtrl-O title and model` : row?.conversation ?
       conversationDetails(row.conversation, this.runtime.state(row.conversation), Number(this.detail.width) - 3) : welcome;
     this.detail.setContent(!this.draft && row?.conversation ? detail : safe(detail));
     if (this.follow) this.detail.setScrollPerc(row?.conversation ? 100 : 0);
-    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open · n new · g general · m message · i input · a reviewed · p pin/unpin\n / search · l lists · o filters · f refresh · d details · PgUp/PgDn scroll · End follow · ? help · q quit\n ${this.notice}`));
+    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-G workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open · n new · g general · m message · i input · a reviewed · p pin/unpin\n / search · l lists · o filters · f refresh · d details · PgUp/PgDn scroll · End follow · ? help · q quit\n ${this.notice}`));
     restoreScroll(this); this.screen.render();
   }
   destroy(): void { this.refreshAbort?.abort(); clearTimeout(this.pendingRender); this.screen.destroy(); }

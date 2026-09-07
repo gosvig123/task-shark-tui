@@ -40,5 +40,5 @@ export async function selectDraftWorkspace(view: View, draft: ConversationDraft)
     if (path && !statSync(expandPath(path)).isDirectory()) throw new Error('The path is not a directory.');
     draft.workspace = path ? expandPath(path) : '';
     view.notice = '';
-  } catch (error) { view.notice = `Cannot select Agent Workspace ${path}: ${String(error)} Choose an existing directory with Ctrl-W.`; }
+  } catch (error) { view.notice = `Cannot select Agent Workspace ${path}: ${String(error)} Choose an existing directory with Ctrl-G.`; }
 }
