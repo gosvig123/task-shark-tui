@@ -7,6 +7,7 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "demo": "tsx src/main.ts --demo",
+    "prototype:board": "tsx src/ui/board-updates.prototype.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "check:limits": "tsx scripts/check-limits.ts && python3 scripts/check-files.py",

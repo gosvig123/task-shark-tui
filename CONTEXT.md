@@ -11,6 +11,9 @@ The Conversations and Tasks destinations in the terminal interface.
 **Task Workspace**:
 The task-centered context containing Details and its task-backed conversations.
 
+**Board Updates**:
+The task-scoped, append-only feed of human and agent Note, Progress, Decision, Blocker, and Handoff updates, separate from subtasks and conversation transcripts. The widget shows it under Task Workspace Details; terminal support is currently a prototype only.
+
 **Task List**:
 The source list that owns a task returned by tasks-go.
 
