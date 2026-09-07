@@ -9,7 +9,6 @@ key, drain = smoke['key'], smoke['drain']
 
 
 def empty_and_cancel(fd, root):
-    key(fd, '\x1b')  # Decline task consent.
     output = key(fd, 'g').replace(b'\x1b[1C', b' ')
     assert b'New Conversation' in output and b'unsaved' in output
     assert b'First message' not in output and b'Pi model' not in output
@@ -50,8 +49,7 @@ def first_send(fd, root):
 
 def task_and_workspace(fd, root):
     key(fd, 'g'); key(fd, 'Linked draft text')
-    key(fd, '\x14')  # Ctrl-T loads tasks through the existing consent flow.
-    key(fd, '\x1b[B'); key(fd, '\r'); drain(fd, 1)
+    key(fd, '\x14')  # Ctrl-T selects from automatically loaded tasks.
     key(fd, 'Work'); key(fd, '\r')
     key(fd, '\x17'); key(fd, root); key(fd, '\r')
     assert len(smoke['conversations'](root)) == 1  # Choosing does not save.

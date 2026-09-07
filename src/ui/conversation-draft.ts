@@ -1,4 +1,5 @@
 import blessed from 'blessed';
+import { workspaceWidth } from './workspace-navigation.js';
 import type { Task } from '../model.js';
 import type { View } from './view.js';
 import { textInput } from './dialogs.js';
@@ -13,19 +14,21 @@ export function submitDraft(view: View, draft: ConversationDraft): boolean {
   if (!draft.text.trim()) return false;
   const c = view.runtime.store.create(draft.title, draft.workspace, draft.model, draft.task, draft.text);
   view.selected = c.id; view.taskScope = draft.task;
+  view.workspaceSection = 'Conversations'; view.workspaceFocus = 'right'; view.boardSequence = undefined;
+  if (draft.task) void view.boards.load(draft.task.id);
   void view.runtime.send(c, draft.text);
   return true;
 }
-export async function editDraft(view: View, draft: ConversationDraft, config?: Config): Promise<void> {
+export async function editDraft(view: View, draft: ConversationDraft, config?: Config): Promise<boolean> {
   view.draft = draft;
   try {
     for (;;) {
       const action = await draftInput(view, draft);
-      if (action === 'cancel') { view.notice = 'Conversation draft discarded. Nothing saved.'; return; }
+      if (action === 'cancel') { view.notice = 'Conversation draft discarded. Nothing saved.'; return false; }
       if (action === 'settings') { await settings(view, draft); continue; }
       if (action === 'task') { await selectDraftTask(view, draft, config); continue; }
       if (action === 'workspace') { await selectDraftWorkspace(view, draft); continue; }
-      try { if (submitDraft(view, draft)) return; }
+      try { if (submitDraft(view, draft)) return true; }
       catch (error) { view.notice = String(error); }
     }
   } finally { view.draft = undefined; view.detail.bottom = 3; }
@@ -33,7 +36,7 @@ export async function editDraft(view: View, draft: ConversationDraft, config?: C
 type DraftAction = 'send' | 'cancel' | 'settings' | 'task' | 'workspace';
 function draftInput(view: View, draft: ConversationDraft): Promise<DraftAction> {
   return new Promise(resolve => {
-    const input = blessed.textarea({ parent: view.screen, left: '32%', right: 0, bottom: 3,
+    const input = blessed.textarea({ parent: view.screen, left: view.taskScope ? workspaceWidth(view) : '32%', right: 0, bottom: 3,
       height: 7, border: 'line', label: ' Message ', keys: false, inputOnFocus: false,
       value: draft.text, style: { border: { fg: 'cyan' } } });
     let action: DraftAction = 'cancel';
@@ -43,8 +46,11 @@ function draftInput(view: View, draft: ConversationDraft): Promise<DraftAction> 
     input.key('C-t', () => finish('task'));
     input.key('C-w', () => finish('workspace'));
     input.key('C-u', () => { input.clearValue(); view.screen.render(); });
+    const resize = () => { input.left = view.taskScope ? workspaceWidth(view) : '32%'; view.screen.render(); };
+    view.screen.on('resize', resize);
     view.detail.bottom = 10; view.render();
     input.readInput(() => {
+      view.screen.removeListener('resize', resize);
       draft.text = input.getValue(); input.destroy(); resolve(action);
     });
   });

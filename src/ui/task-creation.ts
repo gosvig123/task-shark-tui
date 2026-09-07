@@ -11,7 +11,7 @@ import { TaskFilter } from './task-filters.js';
 async function taskListsReady(view: View, config: Config): Promise<boolean> {
   if (view.refreshing) { view.notice = 'Task Lists are loading. Try again when the refresh finishes.'; return false; }
   await refreshTasks(view, config);
-  return (config.demo || config.allowTaskReset) && view.catalog.lists.length > 0 && !view.notice.startsWith('Tasks unavailable:');
+  return view.catalog.lists.length > 0 && !view.notice.startsWith('Tasks unavailable:');
 }
 export async function selectTaskList(view: View, config: Config): Promise<void> {
   if (!await taskListsReady(view, config)) return;
@@ -19,13 +19,13 @@ export async function selectTaskList(view: View, config: Config): Promise<void> 
   const selected = await chooseSourceList(view.screen, 'Task List filter · does not change Active Task List', options);
   if (selected === undefined) return;
   view.switchTab(Tab.tasks);
-  view.listFilter = selected === options[0] ? undefined : selected.slice(6);
+  view.listFilter = selected === options[0] ? undefined : selected.slice(6); view.follow = true;
 }
 export async function createTaskFromView(view: View, config: Config): Promise<void> {
   if (!await taskListsReady(view, config)) return;
   const draft = await taskDraft(view);
   if (!draft) { view.notice = 'Task draft discarded. Nothing created.'; return; }
-  const result = config.demo ? createDemoTask(view, draft) : await createTask(config.tasks, draft, config.allowTaskReset);
+  const result = config.demo ? createDemoTask(view, draft) : await createTask(config.tasks, draft, true);
   if (result.snapshot) view.catalog.byList.set(draft.list, result.snapshot.tasks);
   view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
   view.switchTab(Tab.tasks); view.listFilter = draft.list; view.taskFilter = TaskFilter.all;

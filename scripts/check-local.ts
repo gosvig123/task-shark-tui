@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { configuration } from '../src/config.js';
-import { loadTasks } from '../src/tasks.js';
+import { loadTasks, taskConsentFlag } from '../src/tasks.js';
 import { RpcClient } from '../src/rpc.js';
 
 async function checkLocal(): Promise<void> {
   const config = configuration();
-  if (config.allowTaskReset) {
+  if (process.argv.includes(taskConsentFlag)) {
     const tasks = await loadTasks(config.tasks, true);
     console.log(`tasks-go: ${tasks.length} tasks (daily reset allowed; task files may have changed).`);
   } else console.log('Tasks skipped: snapshots may rewrite today.md/reset state. Explicit --allow-task-reset required.');

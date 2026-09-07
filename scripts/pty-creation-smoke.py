@@ -1,4 +1,4 @@
-"""Creation and consent checks with isolated task/Pi binaries; never real service writes."""
+"""Creation and automatic loading checks with isolated task/Pi binaries; never real service writes."""
 import json
 import os
 from pathlib import Path
@@ -32,7 +32,7 @@ def start(root):
     pid, fd = pty.fork()
     if pid == 0:
         os.environ.update(HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo",
-                          TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi))
+                          TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi), TASKSHARK_BOARD_ROOT=root + '/board')
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts"])
     resize(fd, 100, 32)
     return pid, fd
@@ -50,21 +50,17 @@ def no_conversations(root):
     assert not Path(root, "pi-pid").exists()
 
 
-def consent(fd, root):
+def startup(fd, root):
     output = drain(fd, 1)
-    assert b"Load existing Task Lists?" in output
-    assert calls(root) == []
-    key(fd, ESC)
-    assert calls(root) == []
-    key(fd, "t")
-    key(fd, "n")  # Declining creation's consent cannot start a task mutation.
-    key(fd, ESC)
-    assert calls(root) == []
-    key(fd, "f")
-    key(fd, DOWN)
-    output = key(fd, "\r") + drain(fd, 1)
-    assert b"Empty list" in output
+    for _ in range(30):
+        if any(c['args'][1] == 'snapshot' for c in calls(root)):
+            break
+        output += drain(fd, .1)
+    assert b"Load existing Task Lists?" not in output
     assert calls(root)[0]["args"] == ["api", "lists"]
+    assert any(c["args"][1] == "snapshot" for c in calls(root))
+    assert all(c["args"][1] != "exec" for c in calls(root))
+    key(fd, "t")
 
 
 def task_cancellations(fd, root):
@@ -142,7 +138,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="task-shark-creation-") as root:
         pid, fd = start(root)
         try:
-            consent(fd, root)
+            startup(fd, root)
             task_cancellations(fd, root)
             conversation_cancellations(fd, root)
             create_task(fd, root)
@@ -152,7 +148,7 @@ def main():
         except BaseException:
             review["cleanup"](pid, root)
             raise
-    print("Creation PTY passed: consent, empty/active lists, every draft cancellation, blank submissions, n task/task-backed/general success, source filter.")
+    print("Creation PTY passed: automatic startup loading, empty/active lists, every draft cancellation, blank submissions, n task/task-backed/general success, source filter.")
 
 
 if __name__ == "__main__":

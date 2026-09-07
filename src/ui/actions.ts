@@ -1,3 +1,5 @@
+import { snapshot, restore } from './navigation-memory.js';
+import { openWorkspace, workspaceSection } from './workspace.js';
 import { editDraft, emptyDraft } from './conversation-draft.js';
 import { choose, textInput } from './dialogs.js';
 import { Tab, type View } from './view.js';
@@ -7,11 +9,15 @@ import { TaskFilter } from './task-filters.js';
 import { chooseSearchable } from './list-search.js';
 
 export async function createConversation(view: View, general = false, config?: Config): Promise<void> {
+  const origin = { state: snapshot(view), task: view.taskScope, back: view.workspaceReturn };
   const task = general ? undefined : view.taskScope;
-  view.switchTab(Tab.conversations);
-  view.taskScope = task;
+  if (!task) view.switchTab(Tab.conversations);
+  view.taskScope = task; view.workspaceReturn = task ? origin.back : undefined;
+  view.query = ''; view.selected = ''; view.workspaceSection = 'Conversations'; view.workspaceFocus = 'right';
   view.notice = '';
-  await editDraft(view, emptyDraft(task), config);
+  if (!await editDraft(view, emptyDraft(task), config)) {
+    restore(view, origin.state); view.taskScope = origin.task; view.workspaceReturn = origin.back;
+  } else if (view.taskScope) view.workspaceReturn ??= origin.state;
 }
 export async function compose(view: View, c = view.current()?.conversation): Promise<void> {
   if (!c) { view.notice = 'Select or create a conversation first.'; return; }
@@ -42,28 +48,36 @@ export async function selectTaskFilter(view: View): Promise<void> {
     Object.values(TaskFilter), String);
   if (selected === undefined) return;
   if (view.tab !== Tab.tasks) view.switchTab(Tab.tasks);
-  view.taskFilter = selected; view.selected = '';
+  view.taskFilter = selected; view.selected = ''; view.follow = true;
 }
 export async function search(view: View): Promise<void> {
   const text = await textInput(view.screen, 'Search · blank clears filter', view.query);
-  if (text !== undefined) { view.query = text; view.selected = ''; }
+  if (text !== undefined) { view.query = text; view.selected = ''; view.follow = true; }
 }
 export function open(view: View): void {
   const task = view.current()?.task;
-  if (task) { view.taskScope = task; view.tab = Tab.conversations; view.selected = ''; }
+  if (task) { openWorkspace(view, task); return; }
   else {
     const c = view.current()?.conversation;
-    if (c) { view.tab = Tab.conversations; view.runtime.acknowledge(c); }
+    if (c) {
+      if (c.task) openWorkspace(view, c.task, true);
+      else { view.switchTab(Tab.conversations); view.query = ''; view.selected = c.id; }
+      view.runtime.acknowledge(c);
+    }
   }
   view.follow = true;
 }
 export async function details(view: View): Promise<void> {
+  if (view.taskScope) { workspaceSection(view, 'Details'); return; }
   const task = view.current()?.task ?? view.taskScope ?? view.current()?.conversation?.task;
   if (!task) { view.notice = 'This is a general conversation.'; return; }
   await choose(view.screen, 'Task Workspace · Details (read-only)',
     taskDetails(task, view.runtime.store.conversations).split('\n').filter(Boolean));
 }
 export async function quit(view: View, shutdown: () => Promise<void>): Promise<void> {
+  if (view.boards.writing) { view.notice = 'Board Updates is still saving. Wait for the result before quitting.'; return; }
+  if (view.boards.pending && await choose(view.screen, 'Uncertain Board Update retained only for this launch. Check shared history before posting again after restart.',
+    ['Stay', 'Quit']) !== 'Quit') return;
   const active = [...view.runtime.states.values()].some(s => s.running || s.requests.length);
   if (active && await choose(view.screen, 'Quit stops active Pi processes. Saved sessions remain.', ['Stay', 'Quit']) !== 'Quit') return;
   await shutdown();

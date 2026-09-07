@@ -5,7 +5,7 @@ import { taskSchema } from './model.js';
 
 export const taskConsentFlag = '--allow-task-reset';
 export const taskSnapshotWarning = 'tasks-go lists and snapshots can rewrite today.md and daily reset state. ' +
-  `Allow this for this launch in the task loading dialog, or use ${taskConsentFlag}. Conversations work without it.`;
+  `Explicit reset authorization is required for this operation; standalone checks accept ${taskConsentFlag}.`;
 const snapshotSchema = z.object({ schemaVersion: z.literal(1), revision: z.string().min(1),
   tasks: z.array(taskSchema), error: z.string().optional() });
 const listsSchema = z.object({ schemaVersion: z.literal(1), revision: z.string().min(1),

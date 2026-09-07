@@ -1,5 +1,6 @@
 import blessed, { type Widgets } from 'blessed';
 import { stripVTControlCharacters } from 'node:util';
+import { cursorInput } from './cursor-input.js';
 import { selectionStyle } from './styles.js';
 
 export function safe(text: string): string {
@@ -7,24 +8,17 @@ export function safe(text: string): string {
   const clean = withoutOsc.replace(/[\x00-\x08\x0b-\x1a\x1c-\x1f\x7f]/g, '');
   return stripVTControlCharacters(clean).replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
 }
-export function textInput(screen: Widgets.Screen, title: string, prefill = '', multiline = false): Promise<string | undefined> {
-  return new Promise(resolve => {
-    const box = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
-      height: multiline ? '70%' : 7, border: 'line', style: { border: { fg: 'cyan' } },
-      label: safe(` ${title} `), tags: false });
-    blessed.text({ parent: box, bottom: 0, left: 1, height: 1,
-      content: multiline ? 'Ctrl-S submit · Enter newline · Ctrl-U clear · Esc cancel' : 'Enter continue · Ctrl-U clear · Esc cancel' });
-    const options = { parent: box, top: 1, left: 1, right: 1, bottom: 2, keys: false,
-      inputOnFocus: false, value: safe(prefill), style: { fg: 'white', bg: 'black' } };
-    const input = multiline ? blessed.textarea(options) : blessed.textbox(options);
-    let submitted: string | undefined;
-    input.key('C-u', () => { input.clearValue(); screen.render(); });
-    input.key('C-s', () => { submitted = input.getValue(); input.cancel(); });
-    screen.render();
-    input.readInput((_error, value) => {
-      box.destroy(); screen.render(); resolve(submitted ?? (value == null ? undefined : String(value)));
-    });
-  });
+export async function textInput(screen: Widgets.Screen, title: string, prefill = '', multiline = false): Promise<string | undefined> {
+  const box = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
+    height: multiline ? '70%' : 7, border: 'line', style: { border: { fg: 'cyan' } },
+    label: safe(` ${title} `), tags: false });
+  blessed.text({ parent: box, bottom: 0, left: 1, height: 2,
+    content: '←/→ · Ctrl-←/→ words · Home/End · Ctrl-U clear\n' +
+      (multiline ? 'Ctrl-S submit · Enter newline · Esc cancel' : 'Enter / Ctrl-S submit · Esc cancel') });
+  try {
+    return await cursorInput(screen, { parent: box, top: 1, left: 1, right: 1, bottom: 3,
+      style: { fg: 'white', bg: 'black' } }, safe(prefill), multiline, safe);
+  } finally { box.destroy(); screen.render(); }
 }
 export function choicePanel(screen: Widgets.Screen, title: string, options: string[], details?: string) {
   const panel = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
@@ -38,6 +32,8 @@ export function choicePanel(screen: Widgets.Screen, title: string, options: stri
   const body = details === undefined ? undefined : blessed.box({ parent: panel, top: 0, left: 1, right: 1,
     bottom: 4, content: safe(details), tags: false, wrap: true, scrollable: true, alwaysScroll: true,
     scrollbar: { ch: '│' } });
+  // Blessed does not restore focus when a focused descendant's parent is removed.
+  list.on('detach', () => { if (screen.focused === list) screen.rewindFocus(); });
   if (body) detailKeys(screen, list, body, options);
   list.select(0);
   return { panel, list, body };

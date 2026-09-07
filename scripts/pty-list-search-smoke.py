@@ -46,7 +46,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='task-shark-list-search-') as root:
         pid, fd = creation['start'](root)
         try:
-            creation['consent'](fd, root)
+            creation['startup'](fd, root)
             search_cancel(fd, root)
             search_create(fd, root)
             creation['smoke']['stop'](pid, fd)

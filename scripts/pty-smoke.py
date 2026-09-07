@@ -15,7 +15,7 @@ import time
 def start(root):
     pid, fd = pty.fork()
     if pid == 0:
-        os.environ.update(TERM="xterm-256color", TASK_SHARK_DATA_DIR=root)
+        os.environ.update(TERM="xterm-256color", TASK_SHARK_DATA_DIR=root, TASKSHARK_BOARD_ROOT=root + '/board')
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts", "--demo"])
     resize(fd, 100, 32)
     return pid, fd

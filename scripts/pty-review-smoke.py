@@ -59,7 +59,8 @@ def start_live(root):
     environment = fixture_binaries(root)
     pid, fd = pty.fork()
     if pid == 0:
-        os.environ.update(environment, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo")
+        os.environ.update(environment, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo",
+                          TASKSHARK_BOARD_ROOT=root + '/board')
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts", "--allow-task-reset"])
     resize(fd, 100, 32)
     return pid, fd

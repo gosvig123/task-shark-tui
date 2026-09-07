@@ -24,7 +24,7 @@ test('submitDraft saves task, optional settings, and exact input before delivery
   const root = temporary(t), store = new Store(root, false), draft = emptyDraft(task);
   Object.assign(draft, { text: 'nctgrq/m iaxf\nSecond line', title: 'Optional title', workspace: root, model: 'provider/model' });
   let sends = 0;
-  const view = { runtime: { store, send: (_c: unknown, text: string) => {
+  const view = { boards: { load: async (id: string) => { assert.equal(id, task.id); } }, runtime: { store, send: (_c: unknown, text: string) => {
     sends++;
     const saved = JSON.parse(readFileSync(store.index, 'utf8')).conversations[0];
     assert.equal(saved.inFlight, text);
