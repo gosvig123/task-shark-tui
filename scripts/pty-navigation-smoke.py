@@ -1,4 +1,4 @@
-"""In-session navigation memory against isolated fake services and captured real frames."""
+"""Navigation and saved filters against isolated fake services and captured real frames."""
 import os
 import json
 import pty
@@ -34,6 +34,8 @@ def tabs(fd, root):
     creation['startup'](fd, root)
     key(fd, 'l'); key(fd, 'Work'); key(fd, '\r')
     key(fd, 'o'); key(fd, 'Pending'); key(fd, '\r')
+    saved = json.loads(Path(root, 'demo', 'task-preferences.json').read_text())
+    assert saved['listFilter'] == 'Work' and saved['taskFilter'] == 'Pending'
     key(fd, '/'); key(fd, 'calendar\r'); key(fd, '\x1b[B'); key(fd, '\x1b[6~')
     before = frame(root, 'navigation-before-scroll').splitlines()[2:-3]
     key(fd, 'c'); key(fd, '/'); key(fd, 'no-conversation\r')
@@ -67,12 +69,19 @@ def main():
     with tempfile.TemporaryDirectory(prefix='task-navigation-') as root:
         pid, fd = start(root)
         try:
-            tabs(fd, root); clear_and_refresh(fd, root)
+            tabs(fd, root)
+            creation['smoke']['stop'](pid, fd)
+            pid, fd = start(root); creation['startup'](fd, root)
+            text = frame(root, 'navigation-restarted')
+            assert 'Work' in text.splitlines()[0] and 'Pending' in text.splitlines()[1]
+            key(fd, '\x1b'); text = frame(root, 'navigation-escape-keeps-filters')
+            assert 'Work' in text.splitlines()[0] and 'Pending' in text.splitlines()[1]
+            clear_and_refresh(fd, root)
             creation['smoke']['stop'](pid, fd)
         except BaseException:
             os.kill(pid, signal.SIGKILL); os.waitpid(pid, 0); os.close(fd)
             raise
-    print('Navigation PTY passed: saved list/query, tab/workspace return, draft cancel, explicit clear, refresh invalidation.')
+    print('Navigation PTY passed: immediate filter save, restart, Escape retention, tab/workspace return, draft cancel, search clear, refresh invalidation.')
 
 
 if __name__ == '__main__':

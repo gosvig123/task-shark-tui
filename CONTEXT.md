@@ -53,11 +53,12 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 ## Relationships
 
 - A task has many **Task-backed Conversations**, each with its own **Agent Workspace**.
-- **Service Tabs** remember their own filters, search, selection, and preview position for the current app session; selecting a **Task List** never changes the **Active Task List**.
+- **Service Tabs** remember their own search, selection, and preview position for the current app session; Tasks also saves its **Task List** and status filters across app restarts. Selecting a **Task List** never changes the **Active Task List**.
+- A saved **Task List** filter returns to All Lists if that list is removed; the saved status filter stays unchanged.
 - The Tasks **Service Tab** opens **Task Workspace** directly; selecting a visible task updates Details, **Board Updates**, and **Task-backed Conversations** without leaving it.
 - Each **Task Workspace** remembers its selected section and items during the current session; revisiting restores preview focus without marking work reviewed.
 - Highlighting a task-local item previews it without review; Enter opens it on the right and acknowledges only a **Task-backed Conversation**.
-- Escape from the right pane returns focus left; Escape from inline task search keeps its query and visible selection; Escape from left navigation clears task filters without leaving **Task Workspace**.
+- Escape from the right pane returns focus left; Escape from inline task search keeps its query and visible selection; Escape from left navigation clears only search, keeping the **Task List** and status filters without leaving **Task Workspace**.
 - **Board Updates** share the widget's task ID scope, including references to the same task in Today and its source **Task List**.
 - **Board Updates** are reviewed explicitly through a shared sequence, separately from **Conversation Task Status**.
 - Pi in a **Task-backed Conversation** is instructed to read the task brief and **Board Updates** before task work and can post meaningful progress, decisions, blockers, and handoffs as an agent; posting is agent-driven, not a copy of every response.

@@ -49,7 +49,7 @@ in memory until quit; it never writes a task file.
    the upper third of the left pane, with Board Updates and Conversations below; one preview/interaction pane is on the right.
    Use `1`/`2`/`3` or arrows to highlight items without marking them reviewed.
    `Enter` opens the preview and focuses right; only conversations are acknowledged on open.
-   `Escape` returns focus left. From left navigation it clears task filters, not the workspace.
+   `Escape` returns focus left. From left navigation it clears search, but keeps the Task List and status filters.
    `/` focuses inline search; typing narrows tasks and updates all panes. Enter or Escape keeps the query and selection.
    Press `n` in the task selector for a task, or in Conversations for a Task-backed Conversation. In the
    global Conversations tab, `n` opens an empty General Conversation draft.
@@ -66,9 +66,10 @@ in memory until quit; it never writes a task file.
 
 Each Service Tab remembers its filters, search, highlighted item, and preview position
 while the app runs. Each Task Workspace remembers its section and selected items;
-reopening restores preview focus without marking work reviewed. Escape clears filters
+reopening restores preview focus without marking work reviewed. Escape clears search
 only in the current Service Tab (inside a workspace it returns left first).
-This navigation memory does not survive restarting the app or change the Active Task List.
+Tasks saves its Task List and status filters across restarts. Use `l` and `o` to change them, or select **All Lists** and **All tasks** to reset them.
+A removed list falls back to All Lists. Search, selection, and preview position remain session-only. Filters never change the Active Task List.
 
 Each task can have many conversations. `g` always creates a general conversation.
 The first message is saved before delivery; failed delivery keeps it for manual
@@ -83,17 +84,17 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `c`, `t`, `r` | Conversations, Tasks, For Review Inbox |
 | `↑`, `↓`, `Enter` | Select and open |
 | `1`, `2`, `3`, `↑`, `↓` in Task Workspace | Select left sections/items; arrows scroll when focused right |
-| `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left; clear filters from left navigation |
+| `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left; clear search from left navigation |
 | `n`, `a`, `f` in Board Updates | Post/retry, explicitly review board, refresh shared feed |
 | `n`, `g` | New task in task selector; new conversation in Conversations; `g` always general |
-| `l` | Choose a Task List filter (includes empty lists) |
+| `l`, `o` | Choose a Task List (includes empty lists), or task status/due-date filter |
 | `m` | Compose a message |
 | `i` | Answer the selected conversation's Pi Request |
 | `a` | Mark completed work reviewed |
 | `x` | Stop selected run and discard its Queued Messages, after confirmation |
 | `d` | Read task details |
 | `e` in Task Workspace | Edit title, multiline notes, or due date; explicit Save/Cancel |
-| `/`, `Escape` | Search; leave search keeping query, or clear filters from navigation |
+| `/`, `Escape` | Search; leave search keeping query, or clear search from navigation |
 | `f` | Refresh tasks |
 | `PageUp`, `PageDown`, `End` | Scroll transcript; follow live output |
 | `?` | Controls |
@@ -112,7 +113,7 @@ No/Yes separately. Task refresh runs in the background, without blocking these c
 ## Storage and integration
 
 The default data directory is `~/.local/share/task-shark-tui`. It holds
-`conversations.json`, private Agent Workspaces, and Pi session files. Demo storage
+`conversations.json`, `task-preferences.json`, private Agent Workspaces, and Pi session files. Demo storage
 lives in its `demo/` subdirectory. No existing Task Shark indexes are read or changed.
 A lock prevents simultaneous app instances from writing the same directory.
 

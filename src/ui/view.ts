@@ -36,7 +36,7 @@ export class View {
   readonly workspacePanels = workspacePanels(this);
   readonly taskSearch = blessed.box({ parent: this.screen, hidden: true, top: 3, left: 1, height: 1, style: { fg: 'default' } });
   workspaceReturn?: WorkspaceReturn;
-  readonly navigation = new NavigationMemory();
+  readonly navigation: NavigationMemory;
   readonly todayRemovals = new Set<string>();
   pendingScroll?: number;
   readonly boards: Boards;
@@ -50,6 +50,8 @@ export class View {
   follow = true;
   private pendingRender?: NodeJS.Timeout;
   constructor(readonly runtime: Runtime) {
+    this.navigation = new NavigationMemory(runtime.store.root);
+    this.notice = this.navigation.preferences?.notice ?? '';
     this.boards = new Boards(() => this.schedule(), runtime.store.demo);
     runtime.on('change', () => this.schedule());
     runtime.on('board-post', (id: string) => this.boards.refresh(id));
@@ -95,7 +97,7 @@ export class View {
   }
   render(): void {
     if (this.tab === Tab.tasks || this.taskScope) {
-      reconcileTasks(this); this.renderWorkspace(); return;
+      reconcileTasks(this); this.navigation.persistFilters(this); this.renderWorkspace(); return;
     }
     this.taskSearch.hide(); this.workspacePanels.forEach(panel => panel.hide()); this.detail.setLabel(''); this.detail.style.border.fg = 'default';
     this.list.show(); this.detail.left = '32%';

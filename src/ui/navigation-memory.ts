@@ -1,9 +1,11 @@
 import { allProgress } from './board-preview.js';
+import { TaskPreferences } from './task-preferences.js';
 import type { View } from './view.js';
 import type { Task } from '../model.js';
 import { TaskFilter, type TaskFilterValue } from './task-filters.js';
 import type { WorkspaceSection } from './workspace.js';
 
+const tasksTab = 'Tasks';
 export interface NavigationSnapshot {
   tab: string; query: string; selected: string; listFilter?: string; taskFilter: TaskFilterValue;
   follow: boolean; scroll: number; section: WorkspaceSection; boardSequence?: number;
@@ -22,10 +24,25 @@ export function taskKey(task: Task): string { return JSON.stringify([task.ownerL
 export class NavigationMemory {
   readonly tabs = new Map<string, NavigationSnapshot>();
   readonly tasks = new Map<string, NavigationSnapshot>();
+  readonly preferences?: TaskPreferences;
+  constructor(root?: string) {
+    if (!root) return;
+    this.preferences = new TaskPreferences(root);
+    this.tabs.set(tasksTab, { tab: tasksTab, query: '', selected: '', ...this.preferences.value,
+      follow: true, scroll: 0, section: 'Details' });
+  }
+  persistFilters(view: View): void {
+    if (!this.preferences || (!view.taskScope && view.tab !== tasksTab)) return;
+    try { this.preferences.save(view.workspaceReturn ?? view); }
+    catch (error) {
+      view.notice = `Cannot save task filters to ${this.preferences.path}: ${String(error)}. Check directory permissions and try again.`;
+    }
+  }
   save(view: View): void {
+    this.persistFilters(view);
     if (view.taskScope) {
       this.tasks.set(taskKey(view.taskScope), snapshot(view));
-      if (view.workspaceReturn) this.tabs.set('Tasks', { ...view.workspaceReturn });
+      if (view.workspaceReturn) this.tabs.set(tasksTab, { ...view.workspaceReturn });
     }
     else this.tabs.set(view.tab, snapshot(view));
   }

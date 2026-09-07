@@ -1,5 +1,4 @@
 import { selectorState } from './task-selector.js';
-import { TaskFilter } from './task-filters.js';
 import { Tab, type View } from './view.js';
 import { postBoard, workspaceSection } from './workspace.js';
 import { moveWorkspace } from './workspace-navigation.js';
@@ -9,7 +8,7 @@ export async function workspaceKey(view: View, key: string): Promise<boolean> {
   if (!view.taskScope && view.tab !== Tab.tasks) return false;
   if (key === 'escape') {
     if (view.workspaceFocus === 'right') view.workspaceFocus = 'left';
-    else { const state = selectorState(view); state.query = ''; state.listFilter = undefined; state.taskFilter = TaskFilter.all; }
+    else selectorState(view).query = '';
     return true;
   }
   if (['1', '2', '3'].includes(key)) { workspaceSection(view, ['Details', 'Board Updates', 'Conversations'][Number(key) - 1] as typeof view.workspaceSection); return true; }
