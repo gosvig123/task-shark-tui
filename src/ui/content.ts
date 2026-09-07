@@ -10,7 +10,7 @@ export function taskDetails(task: Task, conversations: Conversation[]): string {
   lines.push('', 'Conversations');
   lines.push(...conversations.filter(c => c.task?.id === task.id && c.task.ownerList === task.ownerList)
     .map(c => `${c.status} · ${c.title}\n  ${c.workspace}`));
-  lines.push('', 'Enter in Tasks: open Task Workspace · 3 in workspace: Conversations · n: new', 'e in Task Workspace: edit title, notes, and due date. Refresh may trigger tasks-go daily reset writes.');
+  lines.push('', 'Enter: focus Details · 3: Conversations · n there: new conversation', 'e in Task Workspace: edit title, notes, and due date. Refresh may trigger tasks-go daily reset writes.');
   return lines.join('\n');
 }
 export function conversationDetails(c: Conversation, live: LiveState, width = 80): string {
@@ -28,7 +28,7 @@ export function conversationDetails(c: Conversation, live: LiveState, width = 80
 export const welcome = [
   'Task Shark', '', 'Browse tasks with t. Start a general conversation with g.',
   'In Tasks: n creates a Pending task; l selects a Task List.', '',
-  'Select a task, Enter, then n for a task-backed conversation.',
+  'Select a task, press 3, then n for a task-backed conversation.',
   'Existing Task Lists load automatically. f refreshes them.', '',
   'Pi runs in each conversation’s fixed Agent Workspace.',
   'Switch conversations while work continues. Completed work goes to For Review.', '',

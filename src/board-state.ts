@@ -8,6 +8,16 @@ export interface BoardState {
 // Widget scope is TASKSHARK_TASK_ID alone: Today aliases and source lists share that task's feed.
 export class Boards {
   private states = new Map<string, BoardState>();
+  private refreshPending = new Set<string>();
+  refresh(id: string): void {
+    const s = this.state(id);
+    if (s.loading || s.writing) { this.refreshPending.add(id); return; }
+    this.refreshPending.delete(id);
+    void this.load(id);
+  }
+  private drainRefresh(id: string): void {
+    if (this.refreshPending.has(id)) this.refresh(id);
+  }
   constructor(readonly changed: () => void, readonly demo: boolean, readonly client: BoardClient = new SharedBoardClient()) {}
   state(id: string): BoardState {
     let state = this.states.get(id);
@@ -27,7 +37,7 @@ export class Boards {
       }
       s.loaded = true;
     } catch (error) { s.error = String(error); }
-    finally { s.loading = false; this.changed(); }
+    finally { s.loading = false; this.changed(); this.drainRefresh(id); }
   }
   async post(id: string, kind: BoardKind, body: string): Promise<void> {
     const s = this.state(id);
@@ -48,7 +58,7 @@ export class Boards {
       s.pending = undefined;
       await this.load(id, true);
     } catch (error) { s.error = `${error}\nDelivery is uncertain. Retry uses the same request ID to prevent duplicates.`; }
-    finally { s.writing = false; this.changed(); }
+    finally { s.writing = false; this.changed(); this.drainRefresh(id); }
   }
   async mark(id: string): Promise<void> {
     const s = this.state(id);
@@ -57,7 +67,7 @@ export class Boards {
     s.writing = true; s.error = undefined; this.changed();
     try { s.reviewed = this.demo ? sequence : await this.client.mark(id, sequence); }
     catch (error) { s.error = String(error); }
-    finally { s.writing = false; this.changed(); }
+    finally { s.writing = false; this.changed(); this.drainRefresh(id); }
   }
 }
 export function canReview(s: BoardState): boolean {

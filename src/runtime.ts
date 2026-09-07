@@ -6,6 +6,7 @@ import { type Wire } from './wire.js';
 import { transcriptMessage } from './transcript-state.js';
 import { Store } from './store.js';
 import { piArguments } from './pi-launch.js';
+import { AgentBoardRpc } from './agent-board-rpc.js';
 
 export type ClientFactory = (c: Conversation, sessions: string) => Transport;
 export class Runtime extends EventEmitter {
@@ -68,6 +69,9 @@ export class Runtime extends EventEmitter {
   private event(c: Conversation, wire: Wire): void {
     if (this.closing) return;
     applyEvent(c, this.state(c), wire);
+    if (c.task && wire.type === 'tool_execution_end' && wire.toolName === 'board_post' && wire.isError === false) {
+      this.emit('board-post', c.task.id);
+    }
     if (wire.type === 'extension_ui_request' && wire.timeout) this.expireRequest(c, wire);
     if (wire.type === 'agent_settled') this.settled(c);
     else this.changed(wire.type !== 'message_update' && wire.type !== 'tool_execution_update');
@@ -151,5 +155,6 @@ export class Runtime extends EventEmitter {
   }
 }
 export function realFactory(binary: string): ClientFactory {
-  return (c, sessions) => new RpcClient(binary, piArguments(c, sessions), c.workspace);
+  return (c, sessions) => c.task ? new AgentBoardRpc(binary, c, sessions) :
+    new RpcClient(binary, piArguments(c, sessions), c.workspace);
 }

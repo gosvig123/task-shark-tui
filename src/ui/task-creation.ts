@@ -1,3 +1,4 @@
+import { selectorState } from './task-selector.js';
 import { randomUUID } from 'node:crypto';
 import type { Config } from '../config.js';
 import { createTask, type TaskDraft } from '../task-api.js';
@@ -18,8 +19,8 @@ export async function selectTaskList(view: View, config: Config): Promise<void> 
   const options = ['All Lists', ...view.catalog.lists.map(name => `List: ${name}`)];
   const selected = await chooseSourceList(view.screen, 'Task List filter · does not change Active Task List', options);
   if (selected === undefined) return;
-  view.switchTab(Tab.tasks);
-  view.listFilter = selected === options[0] ? undefined : selected.slice(6); view.follow = true;
+  if (!view.taskScope && view.tab !== Tab.tasks) view.switchTab(Tab.tasks);
+  selectorState(view).listFilter = selected === options[0] ? undefined : selected.slice(6); view.follow = true;
 }
 export async function createTaskFromView(view: View, config: Config): Promise<void> {
   if (!await taskListsReady(view, config)) return;
@@ -28,11 +29,13 @@ export async function createTaskFromView(view: View, config: Config): Promise<vo
   const result = config.demo ? createDemoTask(view, draft) : await createTask(config.tasks, draft, true);
   if (result.snapshot) view.catalog.byList.set(draft.list, result.snapshot.tasks);
   view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
-  view.switchTab(Tab.tasks); view.listFilter = draft.list; view.taskFilter = TaskFilter.all;
+  view.switchTab(Tab.tasks); Object.assign(selectorState(view), { listFilter: draft.list, taskFilter: TaskFilter.all, query: '' });
+  view.workspaceSection = 'Details';
   view.notice = result.notice;
 }
 async function taskDraft(view: View): Promise<TaskDraft | undefined> {
-  const preferred = view.listFilter && view.listFilter !== 'today' ? view.listFilter : view.catalog.currentList;
+  const filter = selectorState(view).listFilter;
+  const preferred = filter && filter !== 'today' ? filter : view.catalog.currentList;
   const lists = [...view.catalog.lists].sort((a, b) => Number(b === preferred) - Number(a === preferred));
   const list = await chooseSourceList(view.screen, `New Task · source list (default: ${preferred})`, lists);
   if (list === undefined) return;

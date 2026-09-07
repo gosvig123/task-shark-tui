@@ -14,6 +14,9 @@ ESC, DOWN = "\x1b", "\x1b[B"
 
 
 def fixture(root):
+    Path(root, 'helper').mkdir(exist_ok=True)
+    for name in ('cli.mjs', 'store.mjs', 'storage.mjs'):
+        shutil.copyfile('tests/fixtures/fake-board-cli.mjs', Path(root, 'helper', name))
     tasks = Path(root, "tasks.mjs")
     shutil.copyfile("tests/fixtures/fake-tasks.mjs", tasks)
     tasks.chmod(0o700)
@@ -32,7 +35,8 @@ def start(root):
     pid, fd = pty.fork()
     if pid == 0:
         os.environ.update(HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo",
-                          TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi), TASKSHARK_BOARD_ROOT=root + '/board')
+                          TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi), TASKSHARK_BOARD_ROOT=root + '/board',
+                          TASKSHARK_MCP_RESOURCE_DIR=root + '/helper')
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts"])
     resize(fd, 100, 32)
     return pid, fd
@@ -109,7 +113,7 @@ def create_task(fd, root):
 
 
 def create_conversations(fd, root):
-    key(fd, "\r")  # Enter task from Tasks; n now creates a Task-backed Conversation.
+    key(fd, "3")  # Conversations section creates a Task-backed Conversation.
     smoke["create"](fd)
     smoke["wait_state"](fd, root, lambda rows: len(rows) == 1 and rows[0]["status"] == "Needs Input")
     c = smoke["conversations"](root)[0]
@@ -123,7 +127,7 @@ def create_conversations(fd, root):
 
 
 def list_filter(fd, root):
-    key(fd, "t"); key(fd, "l"); drain(fd, 0.5)
+    key(fd, "t"); key(fd, "1"); key(fd, "l"); drain(fd, 0.5)
     key(fd, DOWN); output = key(fd, "\r")
     assert b"Fix calendar" in output and b"sync" in output
     key(fd, "n"); output = drain(fd, 0.5)

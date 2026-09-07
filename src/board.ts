@@ -21,10 +21,11 @@ const pageSchema = z.object({ schemaVersion: z.literal(1), entries: z.array(boar
 export class SharedBoardClient implements BoardClient {
   constructor(readonly resources = process.env.TASKSHARK_MCP_RESOURCE_DIR ??
     '/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP',
-    readonly root = process.env.TASKSHARK_BOARD_ROOT ?? join(homedir(), 'Library/Application Support/TaskShark/SharedTasks/v1')) {}
+    readonly root = process.env.TASKSHARK_BOARD_ROOT ?? join(homedir(), 'Library/Application Support/TaskShark/SharedTasks/v1'),
+    private readonly environment = process.env) {}
   private command(taskID: string, command: string, args: string[] = [], input = ''): Promise<unknown> {
     return new Promise((resolve, reject) => {
-      const env = { ...process.env, TASKSHARK_TASK_ID: taskID, TASKSHARK_BOARD_ROOT: this.root,
+      const env = { ...this.environment, TASKSHARK_TASK_ID: taskID, TASKSHARK_BOARD_ROOT: this.root,
         TASKSHARK_ACTOR_KIND: 'human', TASKSHARK_THREAD_ID: '', PI_SESSION_ID: '' };
       const child = execFile(process.execPath, [join(this.resources, 'cli.mjs'), command, ...args],
         { env, timeout: 15_000, maxBuffer: 4 * 1024 * 1024 }, (error, stdout, stderr) => {

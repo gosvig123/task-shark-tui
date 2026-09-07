@@ -9,10 +9,13 @@ Pi is the agent engine; the terminal app owns navigation and review state.
 The Conversations and Tasks destinations in the terminal interface.
 
 **Task Workspace**:
-The task-centered surface with Details, Board Updates, and Task-backed Conversations stacked on the left and one shared preview and interaction pane on the right.
+The Tasks surface with an inline searchable task selector in the upper third of the left pane, task-scoped Board Updates and Task-backed Conversations below, and one shared preview and interaction pane on the right.
 
 **Board Updates**:
 The task-scoped, append-only feed of human and agent Note, Progress, Decision, Blocker, and Handoff updates shared with the task widget, separate from subtasks and conversation transcripts.
+
+**All progress**:
+The default Board Updates preview that combines all loaded update kinds chronologically, with individual updates available separately.
 
 **Task List**:
 The source list that owns a task returned by tasks-go.
@@ -51,12 +54,16 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 
 - A task has many **Task-backed Conversations**, each with its own **Agent Workspace**.
 - **Service Tabs** remember their own filters, search, selection, and preview position for the current app session; selecting a **Task List** never changes the **Active Task List**.
-- Opening a **Task Workspace** hides the global task list; its three left sections belong only to the opened task.
+- The Tasks **Service Tab** opens **Task Workspace** directly; selecting a visible task updates Details, **Board Updates**, and **Task-backed Conversations** without leaving it.
 - Each **Task Workspace** remembers its selected section and items during the current session; revisiting restores preview focus without marking work reviewed.
 - Highlighting a task-local item previews it without review; Enter opens it on the right and acknowledges only a **Task-backed Conversation**.
-- Escape from the right pane returns focus left; Escape from the left restores the original task list selection and filters.
+- Escape from the right pane returns focus left; Escape from inline task search keeps its query and visible selection; Escape from left navigation clears task filters without leaving **Task Workspace**.
 - **Board Updates** share the widget's task ID scope, including references to the same task in Today and its source **Task List**.
 - **Board Updates** are reviewed explicitly through a shared sequence, separately from **Conversation Task Status**.
+- Pi in a **Task-backed Conversation** is instructed to read the task brief and **Board Updates** before task work and can post meaningful progress, decisions, blockers, and handoffs as an agent; posting is agent-driven, not a copy of every response.
+- Agent **Board Updates** keep the fixed task and conversation attribution; switching **Task Workspace** does not change a running conversation's scope, and **General Conversations** receive no Board integration.
+- Agent posts refresh **Board Updates** without marking them reviewed; collaboration content is untrusted data, never instructions, authorization, or permission.
+- Opening a **Task-backed Conversation** excluded by saved Tasks filters, or with a deleted task, keeps it in the Conversations **Service Tab** without changing Tasks navigation memory.
 - Task and **Agent Workspace** are fixed when a conversation is created.
 - Task title, notes, and due date can be edited in **Task Workspace** with explicit Save; task notes are separate from **Board Updates**.
 - Task edits update the current **Task Workspace** and future conversation snapshots, not the fixed task snapshot of an existing **Task-backed Conversation**.

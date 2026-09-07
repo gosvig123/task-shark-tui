@@ -60,7 +60,13 @@ function finish(wire) {
     later(() => { running = false; emit({ type: 'agent_settled' }); });
   });
 }
+function boardCommands() {
+  return process.env.TASKSHARK_TASK_ID ? [{ name: 'taskshark-board-status', path: argument('--extension'),
+    description: JSON.stringify({ taskID: process.env.TASKSHARK_TASK_ID, threadID: process.env.TASKSHARK_THREAD_ID,
+      tools: ['brief_read', 'board_read', 'board_post'] }) }] : [];
+}
 function command(wire) {
+  if (wire.type === 'get_commands') return response(wire, { commands: boardCommands() });
   if (wire.type === 'get_state') return response(wire, { sessionFile: file, isStreaming: running });
   if (wire.type === 'get_messages') return response(wire, { messages });
   if (wire.type === 'prompt') return start(wire);

@@ -23,7 +23,7 @@ def start(root):
     if pid == 0:
         os.environ.update(HOME=root, TERM='xterm-256color', TASK_SHARK_DATA_DIR=root + '/demo',
                           TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi),
-                          TASKSHARK_BOARD_ROOT=root + '/board', WORKSPACE_FRAME=root + '/frame.txt')
+                          TASKSHARK_BOARD_ROOT=root + '/board', TASKSHARK_MCP_RESOURCE_DIR=root + '/helper', WORKSPACE_FRAME=root + '/frame.txt')
         os.execvp('node', ['node', '--require', './tests/fixtures/capture-workspace.cjs',
                           '--import', 'tsx', 'src/main.ts'])
     creation['resize'](fd, 100, 30)
@@ -41,13 +41,13 @@ def tabs(fd, root):
     key(fd, 't'); text = frame(root, 'navigation-tasks')
     assert 'Second detail line' in text and text.splitlines()[2:-3] == before
     key(fd, '\r'); key(fd, '2'); drain(fd, .7)
-    key(fd, 'c'); key(fd, 't'); key(fd, '\r')
+    key(fd, 'c'); key(fd, 't')
     assert 'Board Updates' in frame(root, 'navigation-restored-board').splitlines()[1]
     assert 'Preview' in frame(root, 'navigation-restored-focus')
     key(fd, '3'); key(fd, 'n'); key(fd, 'Discarded navigation draft'); key(fd, '\x1b')
     assert 'Conversations' in frame(root, 'navigation-cancelled-draft')
     creation['no_conversations'](root)
-    key(fd, '\x1b'); assert frame(root, 'navigation-back').splitlines()[2:-3] == before
+    key(fd, '\x1b'); assert 'Task Workspace' in frame(root, 'navigation-back')
 
 
 def clear_and_refresh(fd, root):

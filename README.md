@@ -1,7 +1,7 @@
 # Task Shark terminal app
 
 A standalone terminal workbench for tasks and Pi conversations. Pi runs underneath
-through its remote procedure call (RPC) protocol. This is not a Pi extension.
+through its remote procedure call (RPC) protocol, with a task-only Board tool extension.
 
 ## Run
 
@@ -27,7 +27,6 @@ Press `f` to refresh. Task creation still writes to your existing source list on
 after you confirm **Create pending task**. The old `--allow-task-reset` app flag is no longer needed.
 
 Try the offline version first:
-
 ```sh
 npm run demo
 ```
@@ -42,16 +41,17 @@ in memory until quit; it never writes a task file.
 
 1. Press `t` to browse your existing Tasks. `l` filters by
    Task List, including empty lists; **All Lists** deduplicates Today references.
-2. In Tasks, `n` starts a task draft: source list, title, optional notes, confirmation.
+2. In the task selector, `n` starts a task draft: source list, title, optional notes, confirmation.
    The default is the selected source list, or Active Task List in All Lists/Today.
    Confirmation saves a **Pending** task. Choosing a filter does not switch your
    Active Task List. No list is created or deleted.
-3. Select a task and press `Enter` to open its Task Workspace. Details, Board Updates,
-   and Conversations stay stacked on the left; one preview/interaction pane is on the right.
+3. Tasks opens Task Workspace directly. The inline searchable task selector fills
+   the upper third of the left pane, with Board Updates and Conversations below; one preview/interaction pane is on the right.
    Use `1`/`2`/`3` or arrows to highlight items without marking them reviewed.
    `Enter` opens the preview and focuses right; only conversations are acknowledged on open.
-   `Escape` returns focus left, then restores the original task list and filters.
-   Press `n` in Details or Conversations for a Task-backed Conversation. In the
+   `Escape` returns focus left. From left navigation it clears task filters, not the workspace.
+   `/` focuses inline search; typing narrows tasks and updates all panes. Enter or Escape keeps the query and selection.
+   Press `n` in the task selector for a task, or in Conversations for a Task-backed Conversation. In the
    global Conversations tab, `n` opens an empty General Conversation draft.
    The transcript and inline composer start empty; type immediately. `Ctrl-O`
    opens optional title, Agent Workspace, and `provider/model` settings.
@@ -67,7 +67,7 @@ in memory until quit; it never writes a task file.
 Each Service Tab remembers its filters, search, highlighted item, and preview position
 while the app runs. Each Task Workspace remembers its section and selected items;
 reopening restores preview focus without marking work reviewed. Escape clears filters
-only in the current Service Tab (inside a workspace it returns left, then back).
+only in the current Service Tab (inside a workspace it returns left first).
 This navigation memory does not survive restarting the app or change the Active Task List.
 
 Each task can have many conversations. `g` always creates a general conversation.
@@ -83,9 +83,9 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `c`, `t`, `r` | Conversations, Tasks, For Review Inbox |
 | `↑`, `↓`, `Enter` | Select and open |
 | `1`, `2`, `3`, `↑`, `↓` in Task Workspace | Select left sections/items; arrows scroll when focused right |
-| `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left, then exit to task list |
+| `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left; clear filters from left navigation |
 | `n`, `a`, `f` in Board Updates | Post/retry, explicitly review board, refresh shared feed |
-| `n`, `g` | New task in Tasks; new conversation elsewhere; `g` always general |
+| `n`, `g` | New task in task selector; new conversation in Conversations; `g` always general |
 | `l` | Choose a Task List filter (includes empty lists) |
 | `m` | Compose a message |
 | `i` | Answer the selected conversation's Pi Request |
@@ -93,7 +93,7 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `x` | Stop selected run and discard its Queued Messages, after confirmation |
 | `d` | Read task details |
 | `e` in Task Workspace | Edit title, multiline notes, or due date; explicit Save/Cancel |
-| `/`, `Escape` | Search; clear search, task scope, and list filter |
+| `/`, `Escape` | Search; leave search keeping query, or clear filters from navigation |
 | `f` | Refresh tasks |
 | `PageUp`, `PageDown`, `End` | Scroll transcript; follow live output |
 | `?` | Controls |
@@ -151,11 +151,11 @@ This version does not import macOS conversations, manage Ticks, or embed a shell
 
 Board Updates use the installed widget's supported helper, through Node, with the
 same task ID and shared root as the widget. No second board store is created.
-First opening a task or pressing `f` in Board Updates reads shared history; `n` appends a human
-Note, Progress, Decision, Blocker, or Handoff. Real agent entries are shown unchanged;
-this integration does not configure Pi to post updates. Demo updates stay in memory.
-The latest 100 entries appear chronologically on the left; the highlighted entry is
-previewed on the right. After opening with `Enter`, `a` reviews **all loaded entries**,
+First selecting a task or pressing `f` in Board Updates reads shared history; `n` appends a human
+Note, Progress, Decision, Blocker, or Handoff. Task-backed Conversations get agent-driven Board tools
+on their next Pi launch; posting is not guaranteed every turn. See [Agent Board integration](docs/agent-board.md). Demo updates stay in memory.
+All progress defaults to all loaded kinds chronologically on the right (latest 100 maximum).
+The left shows All progress, then compact sequence/type rows for individual previews. After opening with `Enter`, `a` reviews **all loaded entries**,
 separately from conversation review; hidden unread entries block review, as in the widget.
 Missing helpers and failed operations appear in the pane, not as an empty successful feed.
 An uncertain post retains its body and request ID for explicit `n` retry without
@@ -176,6 +176,7 @@ npm run typecheck
 npm run check:limits
 npm test
 npm run smoke
+npm run check:board # isolated installed-Pi tool discovery; no model call
 ```
 
 Tests use fake subprocesses and temporary storage. The pseudo-terminal (PTY) smoke
@@ -195,6 +196,4 @@ Use an isolated tasks-go home for that check, not real Task Lists.
 `npm run check:resume` checks installed Pi against a temporary version-3 JSONL
 session with a branch. It verifies active history and runs only `pwd -P` through
 RPC to check the fixed Agent Workspace. It disables extensions and makes no model call.
-
-The npm lockfile is compact JSON to keep every repository file under 200 lines;
-resolved versions and integrity values are unchanged.
+The npm lockfile is compact JSON to keep every repository file under 200 lines; resolved versions and integrity values are unchanged.

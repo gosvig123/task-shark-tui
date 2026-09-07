@@ -15,7 +15,7 @@ import time
 def start(root):
     pid, fd = pty.fork()
     if pid == 0:
-        os.environ.update(TERM="xterm-256color", TASK_SHARK_DATA_DIR=root, TASKSHARK_BOARD_ROOT=root + '/board')
+        os.environ.update(HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root, TASKSHARK_BOARD_ROOT=root + '/board')
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts", "--demo"])
     resize(fd, 100, 32)
     return pid, fd
@@ -91,7 +91,7 @@ def exercise(root, pid, fd):
     output += key(fd, "t")
     assert b"2026-09-10" in output and b"Fix calendar" in output
     key(fd, "\r")
-    create(fd)
+    key(fd, "3"); create(fd)
     wait_state(fd, root, lambda rows: rows and rows[0]["status"] == "Needs Input")
     create(fd, True, "General fixture")
     wait_state(fd, root, lambda rows: len(rows) == 2 and all(c["status"] == "Needs Input" for c in rows))

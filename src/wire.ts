@@ -13,7 +13,8 @@ export interface Wire {
   type: string; id?: string; command?: string; success?: boolean; error?: string;
   message?: PiMessage; assistantMessageEvent?: { type: string; delta?: string; contentIndex?: number;
     id?: string; toolName?: string; content?: string; toolCall?: Content };
-  data?: { sessionFile?: string; messages?: PiMessage[]; isStreaming?: boolean };
+  data?: { sessionFile?: string; messages?: PiMessage[]; isStreaming?: boolean;
+    commands?: { name: string; description?: string; path?: string; sourceInfo?: { path: string } }[] };
   method?: string; title?: string; options?: string[]; prefill?: string; placeholder?: string;
   timeout?: number; toolCallId?: string; toolName?: string; args?: unknown;
   partialResult?: { content?: Content[]; details?: unknown }; result?: { content?: Content[]; details?: unknown }; isError?: boolean;

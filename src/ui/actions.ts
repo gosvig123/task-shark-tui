@@ -1,3 +1,4 @@
+import { selectorState, searchTasks, conversationTask } from './task-selector.js';
 import { snapshot, restore } from './navigation-memory.js';
 import { openWorkspace, workspaceSection } from './workspace.js';
 import { editDraft, emptyDraft } from './conversation-draft.js';
@@ -47,23 +48,21 @@ export async function selectTaskFilter(view: View): Promise<void> {
   const selected = await chooseSearchable(view.screen, 'Task filter · due today and overdue show Pending tasks',
     Object.values(TaskFilter), String);
   if (selected === undefined) return;
-  if (view.tab !== Tab.tasks) view.switchTab(Tab.tasks);
-  view.taskFilter = selected; view.selected = ''; view.follow = true;
+  if (view.tab !== Tab.tasks && !view.taskScope) view.switchTab(Tab.tasks);
+  selectorState(view).taskFilter = selected; view.follow = true;
 }
 export async function search(view: View): Promise<void> {
+  if (view.taskScope || view.tab === Tab.tasks) { await searchTasks(view); return; }
   const text = await textInput(view.screen, 'Search · blank clears filter', view.query);
   if (text !== undefined) { view.query = text; view.selected = ''; view.follow = true; }
 }
 export function open(view: View): void {
-  const task = view.current()?.task;
-  if (task) { openWorkspace(view, task); return; }
-  else {
-    const c = view.current()?.conversation;
-    if (c) {
-      if (c.task) openWorkspace(view, c.task, true);
-      else { view.switchTab(Tab.conversations); view.query = ''; view.selected = c.id; }
-      view.runtime.acknowledge(c);
-    }
+  const c = view.current()?.conversation;
+  if (c) {
+    const target = c.task && conversationTask(view, c.task);
+    if (target) { view.workspaceReturn = target.state; openWorkspace(view, target.task, true); }
+    else { view.switchTab(Tab.conversations); view.query = ''; view.selected = c.id; }
+    view.runtime.acknowledge(c);
   }
   view.follow = true;
 }

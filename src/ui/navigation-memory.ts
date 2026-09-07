@@ -1,3 +1,4 @@
+import { allProgress } from './board-preview.js';
 import type { View } from './view.js';
 import type { Task } from '../model.js';
 import { TaskFilter, type TaskFilterValue } from './task-filters.js';
@@ -15,14 +16,17 @@ export function snapshot(view: View): NavigationSnapshot {
 export function restore(view: View, value: NavigationSnapshot): void {
   Object.assign(view, { tab: value.tab, query: value.query, selected: value.selected, listFilter: value.listFilter,
     taskFilter: value.taskFilter, follow: value.follow, workspaceSection: value.section,
-    boardSequence: value.boardSequence, workspaceFocus: 'left', pendingScroll: value.scroll });
+    boardSequence: value.boardSequence ?? allProgress, workspaceFocus: 'left', pendingScroll: value.scroll });
 }
 export function taskKey(task: Task): string { return JSON.stringify([task.ownerList, task.id]); }
 export class NavigationMemory {
   readonly tabs = new Map<string, NavigationSnapshot>();
   readonly tasks = new Map<string, NavigationSnapshot>();
   save(view: View): void {
-    if (view.taskScope) this.tasks.set(taskKey(view.taskScope), snapshot(view));
+    if (view.taskScope) {
+      this.tasks.set(taskKey(view.taskScope), snapshot(view));
+      if (view.workspaceReturn) this.tabs.set('Tasks', { ...view.workspaceReturn });
+    }
     else this.tabs.set(view.tab, snapshot(view));
   }
   invalidateLists(lists: string[]): void {

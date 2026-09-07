@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { parseWire, readJsonl, type Wire } from './wire.js';
+import { cleanPiEnvironment } from './agent-board-scope.js';
 
 interface Pending { resolve: (wire: Wire) => void; reject: (error: Error) => void; timer?: NodeJS.Timeout }
 export interface Transport {
@@ -17,10 +18,10 @@ export class RpcClient extends EventEmitter implements Transport {
   private stopping = false;
   private stderr = '';
   private closed: Promise<void>;
-  constructor(binary: string, args: string[], cwd: string) {
+  constructor(binary: string, args: string[], cwd: string, trustedEnvironment: NodeJS.ProcessEnv = {}) {
     super();
     this.child = spawn(binary, args, { cwd, stdio: 'pipe', detached: process.platform !== 'win32',
-      env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('TASKSHARK_'))) });
+      env: { ...cleanPiEnvironment(process.env), ...trustedEnvironment } });
     this.closed = new Promise(resolve => this.child.once('close', () => resolve()));
     this.child.stderr.on('data', chunk => { this.stderr = (this.stderr + chunk).slice(-4000); });
     this.child.on('error', error => this.fail(error));
