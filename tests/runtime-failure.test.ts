@@ -39,6 +39,7 @@ test('runtime: assistant failure quarantines queue before a successful recovery'
   await runtime.send(c, 'first');
   await runtime.send(c, 'old one'); await runtime.send(c, 'old two');
   client.settle(true);
+  assert.equal(c.status, Status.failed);
   assert.deepEqual(c.queue, []);
   assert.match(c.messages.find(m => m.role === LocalRole.unsentQueue)!.text, /old one\n\nold two/);
   await runtime.send(c, 'manual recovery'); client.settle();
@@ -69,7 +70,7 @@ test('runtime: dequeued rejection is retained, remaining queue cannot replay', a
   await runtime.send(c, 'first');
   await runtime.send(c, 'reject next'); await runtime.send(c, 'last queued');
   client.reject = 'reject next'; client.settle();
-  await waitFor(() => c.status === Status.needsInput);
+  await waitFor(() => c.status === Status.failed);
   assert.match(c.messages.find(m => m.role === LocalRole.unsentSubmission)!.text, /reject next/);
   assert.equal(c.messages.find(m => m.role === LocalRole.unsentQueue)!.text, 'last queued');
   await runtime.send(c, 'recovery'); client.settle();

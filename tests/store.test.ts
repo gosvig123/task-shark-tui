@@ -26,7 +26,7 @@ test('restart exposes interrupted runs and does not replay queued messages', t =
   const c = store.create('Interrupted', '', '');
   c.status = Status.running; c.queue = ['unsent']; store.save();
   const loaded = new Store(root, false).conversations[0];
-  assert.equal(loaded.status, Status.needsInput);
+  assert.equal(loaded.status, Status.failed);
   assert.deepEqual(loaded.queue, []);
   assert.equal(loaded.messages.at(-1)?.text, 'unsent');
   assert.match(loaded.error!, /not replayed/);

@@ -7,9 +7,28 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Runtime } from '../src/runtime.js';
 import { Store } from '../src/store.js';
-import { Status } from '../src/model.js';
+import { dialogMethods, Status } from '../src/model.js';
+import { temporary } from './helpers.js';
 import type { Transport } from '../src/rpc.js';
 import type { Wire } from '../src/wire.js';
+
+for (const method of dialogMethods) {
+  test(`${method} Pi Request answer clears Needs Input before completion`, async t => {
+    const store = new Store(temporary(t), true), client = new ManualClient();
+    const runtime = new Runtime(store, () => client), c = store.create('Question', '', '');
+    t.after(() => runtime.close());
+    await runtime.send(c, 'inspect');
+    client.emit('event', { type: 'extension_ui_request', id: method, method });
+    assert.equal(c.status, Status.needsInput);
+    const fields = method === 'confirm' ? { confirmed: true } : { value: 'Answer' };
+    runtime.answer(c, method, fields);
+    assert.deepEqual(client.responses, [{ id: method, ...fields }]);
+    assert.equal(runtime.state(c).requests.length, 0);
+    assert.equal(c.status, Status.running);
+    client.emit('event', { type: 'agent_settled' });
+    assert.equal(c.status, Status.review);
+  });
+}
 
 class ManualClient extends EventEmitter implements Transport {
   responses: Record<string, unknown>[] = [];
@@ -26,6 +45,7 @@ test('expired request timers cannot make acknowledged work unread again', async 
     client.emit('event', { type: 'extension_ui_request', id: 'timed', method: 'confirm', timeout: 25 });
     assert.equal(c.status, Status.needsInput);
     runtime.answer(c, 'timed', { confirmed: false });
+    assert.equal(c.status, Status.running);
     client.emit('event', { type: 'agent_settled' });
     runtime.acknowledge(c);
     await setTimeout(50);

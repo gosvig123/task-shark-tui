@@ -4,7 +4,7 @@ import { messageText, type Wire } from './wire.js';
 import { streamMessage, toolEvent, saveMessage, transcriptMessage } from './transcript-state.js';
 
 export function updateStatus(c: Conversation, live: LiveState): void {
-  c.status = live.requests.length || c.error ? Status.needsInput :
+  c.status = c.error ? Status.failed : live.requests.length ? Status.needsInput :
     live.running ? Status.running : Status.review;
 }
 function message(wire: Wire, live: LiveState, c: Conversation): void {

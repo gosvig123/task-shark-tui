@@ -1,6 +1,6 @@
 import { transcript } from './transcript.js';
 import { safe } from './dialogs.js';
-import type { Conversation, LiveState, Task } from '../model.js';
+import { Status, type Conversation, type LiveState, type Task } from '../model.js';
 
 export function taskDetails(task: Task, conversations: Conversation[]): string {
   const lines = [task.title, `Task List: ${task.ownerList}`, `State: ${task.completed ? 'Completed' : 'Pending'}`,
@@ -16,7 +16,7 @@ export function conversationDetails(c: Conversation, live: LiveState, width = 80
     `State: ${c.status}`, c.task ? `Task: ${c.task.title} · ${c.task.ownerList}` : 'General conversation', ''];
   const heading = safe(lines.join('\n'));
   lines.length = 0;
-  if (c.error) lines.push(`Needs Input\n${c.error}`, '');
+  if (c.error) lines.push(`${Status.failed}\n${c.error}`, '');
   for (const request of live.requests) lines.push(`Pi Request: ${request.title ?? request.method}`,
     request.message ?? '', 'Press m to answer the Pi Request.');
   if (c.queue.length) lines.push('', 'Queued Messages', ...c.queue.map((text, i) => `${i + 1}. ${text}`));

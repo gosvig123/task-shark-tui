@@ -24,8 +24,8 @@ export class Store {
     return conversations;
   }
   private interrupted(c: Conversation): void {
-    c.status = Status.needsInput;
-    c.error = 'Previous run ended or input expired. Send a new message to resume.';
+    c.status = Status.failed;
+    c.error ??= 'Previous run ended or input expired. Send a new message to resume.';
     this.preserveSubmission(c);
     this.preserveQueue(c);
   }

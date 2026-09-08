@@ -137,7 +137,7 @@ export class Runtime extends EventEmitter {
     interruptOutput(c, live);
     live.running = false;
     live.requests = [];
-    c.status = Status.needsInput;
+    c.status = Status.failed;
     const client = this.clients.get(c.id);
     this.clients.delete(c.id);
     this.ready.delete(c.id);

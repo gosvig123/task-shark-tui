@@ -4,7 +4,7 @@ import type { PiMessage } from './wire.js';
 export const defaultConversationTitle = 'New conversation';
 export const userMessageRole = 'user';
 export const Status = {
-  needsInput: 'Needs Input', running: 'Running', review: 'For Review', finished: 'Finished',
+  needsInput: 'Needs Input', running: 'Running', review: 'For Review', finished: 'Finished', failed: 'Failed',
 } as const;
 export const LocalRole = {
   unsentQueue: 'Unsent Queued Messages', unsentSubmission: 'Unsent Submission', interrupted: 'Interrupted output',

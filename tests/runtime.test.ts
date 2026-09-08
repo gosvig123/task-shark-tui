@@ -17,6 +17,7 @@ test('RPC streaming, tool activity, approval, review, and saved resume work end 
   assert.equal(c.status, Status.needsInput);
   assert.ok(c.messages.some(m => m.role === 'toolResult' && m.pi?.toolName === 'read' && m.text.includes('Fixture content')));
   f.runtime.answer(c, 'request', { confirmed: false });
+  assert.equal(c.status, Status.running);
   await waitFor(() => c.status === Status.review);
   assert.ok(streamed);
   assert.match(c.messages.at(-1)!.text, /"confirmed":false/);
@@ -41,19 +42,19 @@ test('conversations run concurrently and Queued Messages remain first-in-first-o
   assert.deepEqual(a.messages.filter(m => m.role === 'user').map(m => m.text), ['first', 'second']);
   assert.equal(b.status, Status.review);
 });
-test('command rejection, crash, and abort expose Needs Input without losing other runs', async t => {
+test('command rejection, crash, and abort expose Failed without losing other runs', async t => {
   const f = runtimeFixture(t), a = f.store.create('A', f.root, ''), b = f.store.create('B', f.root, '');
   await f.runtime.send(a, 'reject');
-  assert.equal(a.status, Status.needsInput);
+  assert.equal(a.status, Status.failed);
   assert.match(a.error!, /rejection/);
   await f.runtime.send(b, 'inspect');
   await waitFor(() => pending(f, b.id));
   await f.runtime.abort(b);
-  assert.equal(b.status, Status.needsInput);
+  assert.equal(b.status, Status.failed);
   assert.equal(f.runtime.state(b).requests.length, 0);
   const c = f.store.create('Crash', f.root, '');
   await f.runtime.send(c, 'crash');
-  assert.equal(c.status, Status.needsInput);
+  assert.equal(c.status, Status.failed);
   assert.match(c.error!, /exited/);
 });
 test('select and editor Pi Requests return exact values and cancellation', async t => {
