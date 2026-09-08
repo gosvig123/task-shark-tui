@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Task Shark Terminal App Architecture",
+    "output": "task-shark-architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "viewBox": [1280, 720]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "User",
+      "sublabel": "Terminal session",
+      "pos": [40, 300],
+      "size": [130, 64]
+    },
+    {
+      "id": "tui",
+      "type": "frontend",
+      "label": "Terminal Interface",
+      "sublabel": "Service Tabs and Task Workspace",
+      "pos": [250, 300],
+      "size": [190, 64]
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Task Shark Runtime",
+      "sublabel": "Navigation, drafts, review state",
+      "pos": [540, 300],
+      "size": [200, 64]
+    },
+    {
+      "id": "pi",
+      "type": "external",
+      "label": "Pi Agent Engine",
+      "sublabel": "Remote procedure call protocol",
+      "pos": [860, 300],
+      "size": [190, 64]
+    },
+    {
+      "id": "tasks",
+      "type": "external",
+      "label": "tasks-go",
+      "sublabel": "Task List API and snapshots",
+      "pos": [540, 120],
+      "size": [200, 64]
+    },
+    {
+      "id": "board",
+      "type": "external",
+      "label": "Widget Board Helper",
+      "sublabel": "Shared Board Updates",
+      "pos": [860, 120],
+      "size": [190, 64]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "Local App Storage",
+      "sublabel": "Conversations, preferences, lock",
+      "pos": [540, 500],
+      "size": [200, 64]
+    },
+    {
+      "id": "workspace",
+      "type": "database",
+      "label": "Agent Workspace",
+      "sublabel": "Workspace and Pi session",
+      "pos": [860, 500],
+      "size": [190, 64]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-input",
+      "from": "user",
+      "to": "tui",
+      "label": "keyboard input and previews",
+      "labelAt": [210, 390],
+      "variant": "emphasis"
+    },
+    {
+      "id": "interface-state",
+      "from": "tui",
+      "to": "app",
+      "label": "commands and state changes",
+      "labelAt": [490, 390],
+      "variant": "emphasis"
+    },
+    {
+      "id": "pi-rpc",
+      "from": "app",
+      "to": "pi",
+      "label": "conversation and request protocol",
+      "labelAt": [800, 390],
+      "variant": "emphasis"
+    },
+    {
+      "id": "task-api",
+      "from": "app",
+      "to": "tasks",
+      "label": "list, snapshot, create, update",
+      "labelAt": [500, 230],
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "board-helper",
+      "from": "app",
+      "to": "board",
+      "label": "task-scoped Board Updates",
+      "labelAt": [940, 230],
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "app-storage",
+      "from": "app",
+      "to": "store",
+      "label": "save app state",
+      "labelAt": [750, 430],
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "workspace-storage",
+      "from": "pi",
+      "to": "workspace",
+      "label": "session and task work",
+      "labelAt": [1080, 430],
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "board-extension",
+      "from": "pi",
+      "to": "board",
+      "label": "agent Board tools",
+      "fromSide": "top",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "App boundary",
+      "items": ["The terminal app owns navigation and review state.", "Task Shark does not add a second task store."]
+    },
+    {
+      "dot": "emerald",
+      "title": "Task and conversation scope",
+      "items": ["tasks-go remains the Task List authority.", "Each Task-backed Conversation has a fixed Agent Workspace."]
+    },
+    {
+      "dot": "violet",
+      "title": "Agent integration",
+      "items": ["Pi runs beneath the app through RPC.", "Board Updates use the installed widget helper and shared task ID scope."]
+    }
+  ]
+}
