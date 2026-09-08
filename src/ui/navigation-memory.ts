@@ -51,7 +51,7 @@ export class NavigationMemory {
     }
   }
   tab(view: View, tab: string): void {
-    this.save(view); view.taskScope = undefined; view.workspaceReturn = undefined;
+    this.save(view); view.taskScope = undefined; view.workspaceReturn = undefined; view.fullWidth = false;
     restore(view, this.tabs.get(tab) ?? { tab, query: '', selected: '', taskFilter: TaskFilter.all,
       follow: true, scroll: 0, section: 'Details' });
   }

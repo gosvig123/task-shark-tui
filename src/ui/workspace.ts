@@ -70,8 +70,7 @@ export async function postBoard(view: View): Promise<void> {
   void view.boards.post(id, kind as typeof boardKinds[number], body);
 }
 export function workspaceFooter(view: View): string {
-  const controls = view.workspaceSection === 'Details' ? 'n task · e edit · u post/retry · a review updates · f refresh · PgUp/PgDn scroll' :
+  const controls = view.workspaceSection === 'Details' ? 'Space complete/reopen · n task · e edit · u post/retry · a review updates · f refresh · PgUp/PgDn scroll' :
       'n new · m message · a review · q quit';
-  const notice = view.taskScope && view.todayRemovals?.has(taskKey(view.taskScope)) ? 'Date saved; Today removal pending. e retries removal only.' : view.notice;
-  return ` 1/2 sections · ${view.workspaceFocus === 'left' ? '↑↓ preview · Enter open · Esc clear search' : '↑↓ scroll · Esc left'}\n ${controls}\n ${notice}`;
+  return ` z width · 1/2 sections · ${view.workspaceFocus === 'left' ? '↑↓ preview · Enter open · Esc clear search' : '↑↓ scroll · Esc left'}\n ${controls}\n ${view.notice}`;
 }

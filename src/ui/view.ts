@@ -1,3 +1,4 @@
+import { goalPanel, renderContentLayout } from './content-layout.js';
 import { LocalBoardClient } from '../local-board-client.js';
 import { navigationWidth } from './layout.js';
 import { setListContent } from './list-content.js';
@@ -30,6 +31,8 @@ export class View {
   readonly detail = blessed.box({ parent: this.screen, top: 2, bottom: 3, left: '32%', right: 0,
     border: 'line', scrollable: true, alwaysScroll: true, tags: false, scrollbar: { ch: '│' } });
   readonly footer = blessed.box({ parent: this.screen, bottom: 0, height: 3, style: { fg: 'default' } });
+  readonly goal = goalPanel(this);
+  fullWidth = false;
   tab: string = Tab.conversations;
   catalog: TaskCatalog = { tasks: [], lists: [], currentList: '', byList: new Map() };
   listFilter?: string;
@@ -41,7 +44,6 @@ export class View {
   readonly taskSearch = blessed.box({ parent: this.screen, hidden: true, top: 3, left: 1, height: 1, style: { fg: 'default' } });
   workspaceReturn?: WorkspaceReturn;
   readonly navigation: NavigationMemory;
-  readonly todayRemovals = new Set<string>();
   pendingScroll?: number;
   readonly boards: Boards;
   query = '';
@@ -100,7 +102,7 @@ export class View {
   }
   private renderWorkspace(): void {
     if (this.taskScope) this.selected = this.current()?.key ?? '';
-    this.list.hide(); renderNavigation(this);
+    this.list.hide(); renderNavigation(this); renderContentLayout(this);
     this.header.setContent(safe(` TASK SHARK · Task Workspace · c/t/r tabs · ${this.workspaceReturn?.listFilter ?? this.listFilter ?? 'All Lists'}\n ${this.taskScope?.title ?? 'No tasks match'} · ${this.workspaceSection} · ${this.workspaceReturn?.taskFilter ?? this.taskFilter}`));
     setDetailContent(this.detail, this.draft ? safe(`New Conversation · unsaved\nTask: ${this.taskScope?.title ?? 'No tasks match'}\nAgent Workspace: ${this.draft.workspace || 'New private directory (created on send)'}`) : workspaceContent(this));
     if (this.follow) this.detail.setScrollPerc(!this.draft && this.workspaceSection === 'Conversations' && this.current()?.conversation ? 100 : 0);
@@ -114,6 +116,7 @@ export class View {
     this.workspacePanels.forEach(panel => panel.hide()); this.detail.setLabel(''); this.detail.style.border.fg = 'default';
     this.list.show(); this.list.width = this.detail.left = navigationWidth(Number(this.screen.width));
     this.taskSearch.show(); this.taskSearch.width = Number(this.list.width) - 2; this.taskSearch.setContent(safe(`/ ${this.query || 'Search conversations'}`));
+    renderContentLayout(this);
     if (this.catalog.lists.length && this.listFilter && !this.catalog.lists.includes(this.listFilter)) this.listFilter = undefined;
     const rows = this.rows(), row = this.current();
     this.selected = row?.key ?? '';
@@ -127,7 +130,7 @@ export class View {
       conversationDetails(row.conversation, this.runtime.state(row.conversation), Number(this.detail.width) - 3) : welcome;
     setDetailContent(this.detail, !this.draft && row?.conversation ? detail : safe(detail));
     if (this.follow) this.detail.setScrollPerc(row?.conversation ? 100 : 0);
-    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open · m message · n new\n / search · a reviewed · p pin · ? help · q quit\n ${this.notice}`));
+    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open · m message · n new\n / search · z width · a reviewed · p pin · ? help · q quit\n ${this.notice}`));
     restoreScroll(this); this.screen.render();
   }
   destroy(): void { this.refreshAbort?.abort(); clearTimeout(this.pendingRender); this.screen.destroy(); }

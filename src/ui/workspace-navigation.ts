@@ -1,7 +1,7 @@
 import { taskNavigationWidth, taskNavigationHeights } from './layout.js';
 import { setListContent } from './list-content.js';
 import { navigationLines } from './navigation-lines.js';
-import { taskRows, selectTask, selectorState } from './task-selector.js';
+import { taskDisplayRows, taskRows, selectTask, selectorState } from './task-selector.js';
 import blessed from 'blessed';
 import type { View } from './view.js';
 import { safe } from './dialogs.js';
@@ -16,7 +16,7 @@ export function workspacePanels(view: View): blessed.Widgets.ListElement[] {
 }
 export function renderNavigation(view: View): void {
   if (!view.screen.focused || view.screen.focused.detached) view.detail.focus();
-  const sizes = taskNavigationHeights(Math.max(0, Number(view.screen.height) - 5));
+  const sizes = taskNavigationHeights(Math.max(0, Number(view.screen.height) - 5), conversationLineCount(view));
   let top = 2;
   for (const [i, box] of view.workspacePanels.entries()) {
     const section = sections[i], active = section === view.workspaceSection;
@@ -25,7 +25,7 @@ export function renderNavigation(view: View): void {
     box.style.border.fg = active && view.workspaceFocus === 'left' ? 'cyan' : 'default';
     box.style.selected = { bold: active, inverse: active && view.workspaceFocus === 'left' };
     const selected = section === 'Conversations' ?
-      Math.max(0, view.rows().findIndex(r => r.key === view.selected)) : Math.max(0, taskRows(view).findIndex(r => r.key === selectorState(view).selected));
+      Math.max(0, view.rows().findIndex(r => r.key === view.selected)) : Math.max(0, taskDisplayRows(view).findIndex(r => r.key === selectorState(view).selected));
     setNavigationItems(box, navigationRows(view, section), selected, false);
   }
   view.taskSearch.show(); view.taskSearch.width = workspaceWidth(view) - 2;
@@ -41,9 +41,9 @@ export function navigationLabel(view: View, section: WorkspaceSection): string {
   return ` ${focused ? '▶ ' : ''}${title} `;
 }
 function navigationRows(view: View, section: WorkspaceSection): string[] {
-  if (section === 'Details') return taskRows(view).map(row => row.label).concat(taskRows(view).length ? [] : ['No tasks · / search · n new']);
+  if (section === 'Details') return taskDisplayRows(view).map(row => row.label).concat(taskRows(view).length ? [] : ['No tasks · / search · n new']);
   if (!view.taskScope) return ['Select a task'];
-  if (section === 'Conversations') return view.rows().map(r => r.label).concat(view.rows().length ? [] : ['No conversations · n new']);
+  if (section === 'Conversations') return view.rows().map(r => r.label).concat(view.rows().length ? [] : ['n New conversation']);
   return [];
 }
 export function moveWorkspace(view: View, delta: number): void {
@@ -65,4 +65,9 @@ function setNavigationItems(box: blessed.Widgets.ListElement, rows: string[], se
     items.push(...lines.map((line, part) => `${index === selected && !part ? '› ' : '  '}${line}`));
   });
   setListContent(box, items); box.select(position);
+}
+function conversationLineCount(view: View): number {
+  const box = view.workspacePanels[1];
+  box.width = workspaceWidth(view);
+  return navigationLines(box, navigationRows(view, 'Conversations'), false).flat().length;
 }

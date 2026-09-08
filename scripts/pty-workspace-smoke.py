@@ -45,9 +45,9 @@ def board(fd, root):
     resize(fd, 70, 24); drain(fd, .5)
     aggregate(fd, root, '70')
     text = frame(root, '70-board')
-    assert all(label in text for label in ['1 Tasks', '2 Conversations'])
+    assert all(label in text for label in ['[1] Tasks', '[2] Conversations'])
     assert all(len(line) <= 70 for line in text.splitlines())
-    assert '2 Conversations' in text.splitlines()[11]
+    assert '[2] Conversations' in text.splitlines()[18]
 
 
 def aggregate(fd, root, size):
@@ -64,7 +64,7 @@ def aggregate(fd, root, size):
 def conversation(fd, root):
     key(fd, '2'); key(fd, 'n')
     draft = frame(root, '70-inline-draft')
-    assert all(label in draft for label in ['1 Tasks', '2 Conversations', 'New Conversation'])
+    assert all(label in draft for label in ['[1] Tasks', '[2] Conversations', 'New Conversation'])
     key(fd, 'inspect 123nmi\x13')
     smoke['wait_state'](fd, root, lambda rows: rows and rows[0]['status'] == 'Needs Input')
     assert any(m['text'] == 'inspect 123nmi' for m in smoke['conversations'](root)[0]['messages'])
@@ -75,7 +75,18 @@ def conversation(fd, root):
     key(fd, '\r'); assert 'Open' in frame(root, '70-open-conversation')
     assert smoke['conversations'](root)[0]['status'] == 'Finished'
     key(fd, '\x1b'); assert 'Preview' in frame(root, '70-left-focus')
+    content_layout(fd, root)
     existing_message(fd, root)
+
+
+def content_layout(fd, root):
+    key(fd, 'z')
+    text = frame(root, 'full-width-goal')
+    assert '[1] Tasks' not in text and 'Original goal' in text and 'inspect 123nmi' in text
+    key(fd, '\x07')
+    assert 'first user message' in frame(root, 'full-original-goal')
+    key(fd, '\x1b'); key(fd, '\x1b')
+    assert '[1] Tasks' in frame(root, 'restored-width')
 
 
 def existing_message(fd, root):
@@ -102,13 +113,13 @@ def exercise(fd, root):
     assert 'Tasks' in frame(root, 'list')
     text = frame(root, '100-details')
     assert 'Task Workspace' in text and 'Task List: Task Shark Demo' in text
-    assert '2 Conversations' in text.splitlines()[14]
-    assert all(label in text for label in ['1 Tasks', '2 Conversations', 'Preview'])
+    assert '[2] Conversations' in text.splitlines()[24]
+    assert all(label in text for label in ['[1] Tasks', '[2] Conversations', 'Preview'])
     key(fd, '2'); assert 'No conversations for this task' in frame(root, 'empty-conversations')
     board(fd, root)
     conversation(fd, root)
     key(fd, '\x1b'); text = frame(root, 'restored-list')
-    assert 'Task Workspace' in text and '1 Tasks' in text
+    assert 'Task Workspace' in text and '[1] Tasks' in text
     key(fd, '\r'); key(fd, '1'); assert 'Board Updates' in frame(root, 'reopened-board')
     key(fd, '1'); key(fd, '\x1b[B')
     assert 'No Board Updates' in frame(root, 'other-task')

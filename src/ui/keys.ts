@@ -1,4 +1,5 @@
-import { taskActions } from './task-controls.js';
+import { toggleContentWidth, showOriginalGoal } from './content-layout.js';
+import { taskActions, toggleTaskCompletion } from './task-controls.js';
 import { taskListActions } from './task-list-controls.js';
 import { editTask } from './task-edit.js';
 import { workspaceKey } from './workspace-keys.js';
@@ -16,6 +17,7 @@ const help = [
   'Up / Down: select conversations, not section headers · Enter: open preview or mark a conversation read',
   'Task Workspace: 1/2 select stacked left sections; arrows preview items, Enter opens on right',
   'Escape: right pane to left sections; Escape on left clears search, keeps list and status',
+  'Space in Tasks: complete/reopen selected task · Task List headings are skipped by arrows',
   'v: Task actions (complete, subtasks, Today, delete) · g: Manage Task Lists (create, rename, Active, delete)',
   'e in Task Workspace: edit title, notes, due date; Save explicitly, Escape cancels',
   'Task preview updates: u post/retry · a on right reviews all loaded board entries · f refreshes shared feed',
@@ -26,6 +28,7 @@ const help = [
   'm answers a pending Pi Request; Esc cancels that request',
   'a: mark reviewed · p: pin/unpin selected conversation · x: stop selected run and clear its Queued Messages',
   'd: task details · /: search · l: Task Lists · o: task filters · f: refresh tasks · Escape: clear search',
+  'z: toggle full-width content · Ctrl-G: read the full original goal (first user message)',
   'PageUp/PageDown: scroll transcript · End: follow live output',
   'q or Ctrl-C: quit (confirmation if active); work stops but sessions persist',
   'Demo: include input, select, or editor in a message to test that Pi Request',
@@ -34,17 +37,19 @@ const help = [
 export function bindKeys(view: View, config: Config, shutdown: () => Promise<void>): void {
   const actions: Record<string, () => void | Promise<void>> = {
     c: () => view.switchTab(Tab.conversations, false), t: () => view.switchTab(Tab.tasks, false), r: () => view.switchTab(Tab.review, false),
-    up: () => view.move(-1, false), down: () => view.move(1, false), enter: () => open(view),
+    up: () => view.fullWidth ? scroll(view, -1) : view.move(-1, false), down: () => view.fullWidth ? scroll(view, 1) : view.move(1, false), enter: () => open(view),
     '1': () => {}, '2': () => {}, u: () => {}, b: () => {}, e: () => editTask(view, config),
     n: () => (view.tab === Tab.tasks || (view.taskScope && view.workspaceSection === 'Details')) ? createTaskFromView(view, config) : createConversation(view, false, config),
+    space: () => toggleTaskCompletion(view, config),
     v: () => taskActions(view, config), g: () => taskListActions(view, config),
     m: () => compose(view), l: () => selectTaskList(view, config),
-    o: () => selectTaskFilter(view), x: () => stopRun(view), d: () => details(view), '/': () => search(view),
+    o: () => selectTaskFilter(view), x: () => stopRun(view), d: () => details(view), '/': () => { view.fullWidth = false; view.render(); return search(view); },
     a: () => { const c = view.current()?.conversation; if (c) view.runtime.acknowledge(c); },
+    z: () => toggleContentWidth(view), 'C-g': () => showOriginalGoal(view),
     p: () => { const c = view.current()?.conversation; if (c) view.runtime.store.togglePin(c); },
     f: () => { if (view.taskScope) view.boards.refresh(view.taskScope.id); void refreshTasks(view, config); },
     q: () => quit(view, shutdown), 'C-c': () => quit(view, shutdown),
-    escape: () => { view.query = ''; view.taskScope = undefined; view.listFilter = undefined; view.taskFilter = TaskFilter.all; view.follow = true; },
+    escape: () => { if (view.fullWidth) { toggleContentWidth(view); return; } view.query = ''; view.taskScope = undefined; view.listFilter = undefined; view.taskFilter = TaskFilter.all; view.follow = true; },
     pageup: () => scroll(view, -10), pagedown: () => scroll(view, 10),
     end: () => { view.follow = true; }, '?': async () => { await choose(view.screen, 'Controls', help); },
   };

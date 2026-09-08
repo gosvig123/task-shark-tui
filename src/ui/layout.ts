@@ -17,7 +17,8 @@ export function resizePanel(panel: Widgets.BoxElement, desired: () => number): v
 export function taskNavigationWidth(columns: number): number {
   return Math.max(12, Math.min(Math.floor(columns * .4), columns - 24));
 }
-export function taskNavigationHeights(height: number): number[] {
-  const first = Math.floor(Math.max(0, height) / 2);
-  return [first, Math.max(0, height) - first];
+export function taskNavigationHeights(height: number, conversationRows = 0): number[] {
+  const available = Math.max(0, height);
+  const conversations = Math.min(Math.floor(available / 2), Math.max(3, conversationRows + 2));
+  return [available - conversations, conversations];
 }

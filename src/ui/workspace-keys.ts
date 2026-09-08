@@ -7,11 +7,11 @@ import { moveWorkspace } from './workspace-navigation.js';
 export async function workspaceKey(view: View, key: string): Promise<boolean> {
   if (!view.taskScope && view.tab !== Tab.tasks) return false;
   if (key === 'escape') {
-    if (view.workspaceFocus === 'right') view.workspaceFocus = 'left';
+    if (view.workspaceFocus === 'right') { view.workspaceFocus = 'left'; view.fullWidth = false; }
     else selectorState(view).query = '';
     return true;
   }
-  if (['1', '2'].includes(key)) { workspaceSection(view, ['Details', 'Conversations'][Number(key) - 1] as typeof view.workspaceSection); return true; }
+  if (['1', '2'].includes(key)) { view.fullWidth = false; workspaceSection(view, ['Details', 'Conversations'][Number(key) - 1] as typeof view.workspaceSection); return true; }
   if (key === 'enter') {
     if (view.workspaceFocus === 'left' && view.workspaceSection === 'Conversations') {
       const c = view.current()?.conversation; if (c) view.runtime.acknowledge(c);
