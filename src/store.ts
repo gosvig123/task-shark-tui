@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, statSync, existsSyn
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { conversationSchema, Status, LocalRole, type Conversation, type Task } from './model.js';
+import { conversationSchema, defaultConversationTitle, Status, LocalRole, type Conversation, type Task } from './model.js';
 import { expandPath } from './config.js';
 
 const indexSchema = z.object({ version: z.literal(1), conversations: z.array(conversationSchema) });
@@ -53,10 +53,10 @@ export class Store {
     if (!workspace) mkdirSync(directory, { recursive: true, mode: 0o700 });
     if (!statSync(directory).isDirectory()) throw new Error('Agent Workspace must be a directory.');
     const c: Conversation = {
-      id, title: title.trim() || task?.title || 'New conversation', workspace: directory,
+      id, title: title.trim() || task?.title || defaultConversationTitle, workspace: directory,
       model: model.trim() || undefined, task: task ? structuredClone(task) : undefined,
       demo: this.demo, status: Status.finished, updatedAt: new Date().toISOString(), messages: [], queue: [],
-      inFlight: firstMessage,
+      inFlight: firstMessage, needsGeneratedTitle: !title.trim(),
     };
     this.conversations.unshift(c);
     try { this.save(); }

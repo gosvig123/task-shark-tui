@@ -3,6 +3,7 @@ import { Store } from './store.js';
 import { lockStore } from './lock.js';
 import { Runtime, realFactory } from './runtime.js';
 import { DemoClient } from './demo.js';
+import { ConversationNamer, piTitleGenerator } from './conversation-namer.js';
 import { refreshTasks } from './ui/refresh.js';
 import { View } from './ui/view.js';
 import { bindKeys } from './ui/keys.js';
@@ -32,7 +33,8 @@ function main(): void {
   const release = lockStore(config.root);
   try {
     const store = new Store(config.root, config.demo);
-    const runtime = new Runtime(store, config.demo ? () => new DemoClient() : realFactory(config.pi));
+    const namer = config.demo ? undefined : new ConversationNamer(piTitleGenerator(config.pi, config.namingModel));
+    const runtime = new Runtime(store, config.demo ? () => new DemoClient() : realFactory(config.pi), namer);
     const view = new View(runtime);
     const shutdown = lifecycle(view, runtime, release);
     bindKeys(view, config, shutdown);

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { PiMessage } from './wire.js';
 
+export const defaultConversationTitle = 'New conversation';
+export const userMessageRole = 'user';
 export const Status = {
   needsInput: 'Needs Input', running: 'Running', review: 'For Review', finished: 'Finished',
 } as const;
@@ -23,6 +25,7 @@ export type TranscriptMessage = z.infer<typeof messageSchema>;
 export const conversationSchema = z.object({
   id: z.string().uuid(), title: z.string(), workspace: z.string(), model: z.string().optional(),
   task: taskSchema.optional(), sessionFile: z.string().optional(), demo: z.boolean(),
+  needsGeneratedTitle: z.boolean().optional(),
   status: z.enum(Object.values(Status)), updatedAt: z.string(), pinned: z.boolean().optional(),
   messages: z.array(messageSchema), error: z.string().optional(),
   queue: z.array(z.string()).default([]), inFlight: z.string().optional(),

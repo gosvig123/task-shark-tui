@@ -70,12 +70,12 @@ Each Service Tab remembers its filters, search, highlighted item, and preview po
 while the app runs. Each Task Workspace remembers its section and selected items;
 reopening restores preview focus without marking work reviewed. Escape clears search
 only in the current Service Tab (inside a workspace it returns left first).
-Tasks saves its Task List and status filters across restarts. Use `l` and `o` to change them, or select **All Lists** and **All tasks** to reset them.
-A removed list falls back to All Lists. Search, selection, and preview position remain session-only. Filters never change the Active Task List.
+Tasks saves its Task List and status filters across restarts. Use `l` and `o` to change them, or select **All Lists** and **All tasks** to reset them. A removed list falls back to All Lists. Search, selection, and preview position remain session-only. Filters never change the Active Task List.
 
 Each task can have many conversations. `g` always creates a general conversation.
 The first message is saved before delivery; failed delivery keeps it for manual
 resubmission. No draft is saved before the first nonblank message.
+Blank titles are named from the first message through a separate, tool-free Terra call. Naming runs in the background, keeps your explicit titles, and retains the fallback title if it fails.
 Messages sent during a run become Queued Messages and are delivered in order after
 that run settles, including retries. They do not interrupt a pending Pi Request.
 
@@ -128,6 +128,7 @@ not concatenate session branches or rewrite Pi session files.
 | Environment variable | Purpose |
 | --- | --- |
 | `TASK_SHARK_DATA_DIR` | Alternative data directory; demo adds `/demo` |
+| `TASK_SHARK_NAMING_MODEL` | Conversation title model; default `openai-codex/gpt-5.6-terra` |
 | `TASK_SHARK_PI` | Pi executable path; default searches PATH and `~/.pi/agent/bin/pi` |
 | `TASK_SHARK_TASKS` | tasks-go executable path; default searches PATH and `~/.local/bin/tasks` |
 | `TASKSHARK_MCP_RESOURCE_DIR` | Widget Board helper directory; default `/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP` |

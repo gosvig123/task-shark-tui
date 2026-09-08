@@ -7,6 +7,7 @@ import { transcriptMessage } from './transcript-state.js';
 import { Store } from './store.js';
 import { piArguments } from './pi-launch.js';
 import { AgentBoardRpc } from './agent-board-rpc.js';
+import type { ConversationNamer } from './conversation-namer.js';
 
 export type ClientFactory = (c: Conversation, sessions: string) => Transport;
 export class Runtime extends EventEmitter {
@@ -15,7 +16,7 @@ export class Runtime extends EventEmitter {
   private ready = new Map<string, Promise<Transport>>();
   private timers = new Set<NodeJS.Timeout>();
   private closing = false;
-  constructor(readonly store: Store, private factory: ClientFactory) { super(); }
+  constructor(readonly store: Store, private factory: ClientFactory, private namer?: ConversationNamer) { super(); }
   state(c: Conversation): LiveState {
     if (!this.states.has(c.id)) this.states.set(c.id, liveState());
     return this.states.get(c.id)!;
@@ -60,6 +61,7 @@ export class Runtime extends EventEmitter {
     try {
       const client = await this.connect(c);
       await client.request('prompt', { message: text }, 0);
+      this.namer?.start(c, text, () => this.changed());
       if (generation === live.generation && !live.agentStarted && live.running) {
         const state = await client.request('get_state');
         if (!state.data?.isStreaming && !live.requests.length) this.settled(c);
@@ -144,6 +146,7 @@ export class Runtime extends EventEmitter {
   async close(): Promise<void> {
     if (this.closing) return;
     this.closing = true;
+    this.namer?.close();
     for (const timer of this.timers) clearTimeout(timer);
     for (const c of this.store.conversations) {
       this.store.preserveSubmission(c); this.store.preserveQueue(c);
