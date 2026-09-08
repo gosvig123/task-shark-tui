@@ -1,3 +1,4 @@
+import { localDate } from '../src/task-today.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
@@ -10,13 +11,11 @@ function seed(root: string, lists: number, tasks: number): void {
   database(root, db => {
     const list = db.prepare('INSERT INTO task_lists VALUES (?, 0)');
     const task = db.prepare('INSERT INTO tasks VALUES (?, ?, ?)');
-    const today = db.prepare('INSERT INTO today VALUES (?)');
     for (let i = 0; i < lists; i++) list.run(`List ${i}`);
     for (let i = 0; i < tasks; i++) {
       const ownerList = `List ${i % lists}`, id = String(i);
       task.run(id, ownerList, JSON.stringify({ id, ownerList, title: `Task ${i}`,
-        description: 'Task notes '.repeat(30), completed: false, subtasks: [] }));
-      if (i % 4 === 0) today.run(id);
+        description: 'Task notes '.repeat(30), dueDate: i % 4 === 0 ? localDate() : undefined, completed: false, subtasks: [] }));
     }
   });
 }

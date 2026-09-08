@@ -13,7 +13,19 @@ export function selectorState(view: View) { return view.workspaceReturn ?? view;
 export function taskRows(view: View): Row[] {
   const state = selectorState(view);
   return filterTasks(state.listFilter ? view.catalog.byList.get(state.listFilter) ?? [] : view.catalog.tasks,
-    state.taskFilter, state.query).map(task => ({ key: `${task.ownerList}/${task.id}`, label: taskLabel(task), task }));
+    state.taskFilter, state.query).map(task => ({ key: `${task.ownerList}/${task.id}`, label: taskLabel(task, false), task }))
+    .sort((a, b) => a.task.ownerList.localeCompare(b.task.ownerList));
+}
+export function taskDisplayRows(view: View): Row[] {
+  const rows: Row[] = []; let list: string | undefined;
+  for (const row of taskRows(view)) {
+    if (row.task!.ownerList !== list) {
+      list = row.task!.ownerList;
+      rows.push({ key: `list:${list}`, section: list, label: `▾ ${list}` });
+    }
+    rows.push({ ...row, label: `  ${row.label}` });
+  }
+  return rows;
 }
 export function selectTask(view: View, key: string): void {
   const row = taskRows(view).find(row => row.key === key);

@@ -1,6 +1,7 @@
+import { localDate } from '../src/task-today.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dueDay, filterTasks, localDate, taskLabel, TaskFilter } from '../src/ui/task-filters.js';
+import { dueDay, filterTasks, taskLabel, TaskFilter } from '../src/ui/task-filters.js';
 import type { Task } from '../src/model.js';
 
 const today = '2026-09-06';

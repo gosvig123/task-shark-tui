@@ -1,4 +1,3 @@
-import { removeTodayReference } from './task-today.js';
 import { database } from './task-database.js';
 import type { Task } from './model.js';
 import { snapshot, saveTask, type TaskSnapshot } from './task-api.js';
@@ -19,7 +18,7 @@ export function changesFor(task: Task, draft: TaskEdits): Partial<TaskEdits> {
 export function rebaseEdits(original: Task, draft: TaskEdits, current: Task): TaskEdits {
   return { ...editable(current), ...changesFor(original, draft) };
 }
-export interface TaskEditResult { saved: boolean; notice: string; snapshot?: TaskSnapshot; blocked?: boolean; todayPending?: boolean; todaySnapshot?: TaskSnapshot }
+export interface TaskEditResult { saved: boolean; notice: string; snapshot?: TaskSnapshot; blocked?: boolean }
 export async function updateTask(root: string, original: Task, draft: TaskEdits): Promise<TaskEditResult> {
   const changes = changesFor(original, draft);
   if (!Object.keys(changes).length) return { saved: true, notice: 'No task changes.' };
@@ -32,12 +31,5 @@ export async function updateTask(root: string, original: Task, draft: TaskEdits)
     saveTask(db, { ...current, ...changes });
     return { saved: true, snapshot: snapshot(db, original.ownerList), notice: 'Task saved.' };
   });
-  return finishUpdate(root, original, changes, result);
-}
-async function finishUpdate(root: string, original: Task, changes: Partial<TaskEdits>, result: TaskEditResult): Promise<TaskEditResult> {
-  if (result.saved && 'dueDate' in changes) {
-    const removal = await removeTodayReference(root, original);
-    result.todayPending = !removal.complete; result.notice = removal.notice; result.todaySnapshot = removal.today;
-  }
   return result;
 }

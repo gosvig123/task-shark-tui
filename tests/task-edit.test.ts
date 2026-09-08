@@ -1,12 +1,13 @@
+import { localDate } from '../src/task-today.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { changesFor, editable, rebaseEdits } from '../src/task-edit.js';
 import { replaceCatalogTask } from '../src/ui/task-edit.js';
 import type { View } from '../src/ui/view.js';
-const original = { id: 'task', title: 'Original', description: 'Notes\nSecond line', dueDate: '2026-09-07',
+const original = { id: 'task', title: 'Original', description: 'Notes\nSecond line', dueDate: localDate(),
   ownerList: 'Work', completed: false, subtasks: [{ id: 'subtask', title: 'Keep', completed: false }] };
 test('task editor prefills fields, emits only changed fields and validates real dates/title', () => {
-  assert.deepEqual(editable(original), { title: 'Original', description: 'Notes\nSecond line', dueDate: '2026-09-07' });
+  assert.deepEqual(editable(original), { title: 'Original', description: 'Notes\nSecond line', dueDate: localDate() });
   assert.deepEqual(changesFor(original, editable(original)), {});
   assert.deepEqual(changesFor(original, { ...editable(original), description: '', dueDate: '' }), { description: '', dueDate: '' });
   assert.deepEqual(changesFor(original, { ...editable(original), title: ' New title ' }), { title: 'New title' });

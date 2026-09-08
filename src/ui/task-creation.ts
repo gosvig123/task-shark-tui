@@ -1,4 +1,4 @@
-import { todayList } from '../task-today.js';
+import { todayList, todayTasks, localDate } from '../task-today.js';
 import { taskListActions } from './task-list-controls.js';
 import { selectorState } from './task-selector.js';
 import { randomUUID } from 'node:crypto';
@@ -9,7 +9,7 @@ import { choose, textInput } from './dialogs.js';
 import { refreshTasks } from './refresh.js';
 import { chooseSourceList } from './list-search.js';
 import { Tab, type View } from './view.js';
-import { localDate, TaskFilter } from './task-filters.js';
+import { TaskFilter } from './task-filters.js';
 
 async function taskListsReady(view: View, config: Config): Promise<boolean> {
   if (view.refreshing) { view.notice = 'Task Lists are loading. Try again when the refresh finishes.'; return false; }
@@ -30,7 +30,7 @@ export async function createTaskFromView(view: View, config: Config): Promise<vo
   const draft = await taskDraft(view);
   if (!draft) { view.notice = 'Task draft discarded. Nothing created.'; return; }
   const result = config.demo ? createDemoTask(view, draft) : await createTask(config.root, draft);
-  if (result.snapshot) view.catalog.byList.set(draft.list, result.snapshot.tasks);
+  if (!config.demo) await refreshTasks(view, config);
   view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
   view.switchTab(Tab.tasks); Object.assign(selectorState(view), { listFilter: draft.list, taskFilter: TaskFilter.all, query: '' });
   view.workspaceSection = 'Details';
@@ -55,8 +55,9 @@ async function taskDraft(view: View): Promise<TaskDraft | undefined> {
 export function createDemoTask(view: View, draft: TaskDraft) {
   const source = draft.list === todayList ? view.catalog.currentList : draft.list;
   const task = { id: randomUUID(), title: draft.title, description: draft.description,
-    ownerList: source, dueDate: draft.dueDate, completed: false, subtasks: [] };
+    ownerList: source, dueDate: draft.dueDate ?? (draft.list === todayList ? localDate() : undefined), completed: false, subtasks: [] };
   view.catalog.byList.get(source)!.push(task);
-  if (draft.list === todayList) view.catalog.byList.get(todayList)!.push({ ...task, placement: 'reference' });
+  view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
+  view.catalog.byList.set(todayList, todayTasks(view.catalog.tasks));
   return { confirmed: true, snapshot: undefined, notice: `Created Pending demo task in ${draft.list}; kept in memory only.` };
 }

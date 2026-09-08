@@ -5,7 +5,6 @@ import { taskSchema, type Task } from './model.js';
 import { database } from './task-database.js';
 import { saveTask } from './task-api.js';
 import { changesFor, editable } from './task-edit.js';
-import { removeTodayReference } from './task-today.js';
 
 const subtask = z.object({ id: z.string().trim().min(1).max(512), title: z.string().trim().min(1).max(1000), completed: z.boolean() }).strict();
 export const taskPatchSchema = z.object({ title: z.string().trim().min(1).max(1000), description: z.string().max(100000),
@@ -33,12 +32,11 @@ export function applyTaskPatch(current: Task, expected: TaskPatch, changes: Task
 }
 export async function mutateTask(root: string, id: string, params: unknown): Promise<{ task: Task; notice: string }> {
   const { expected, changes } = taskUpdateSchema.parse(params);
-  const { task, dateChanged } = database(root, db => {
+  const task = database(root, db => {
     const current = currentTask(db, id), next = applyTaskPatch(current, expected, changes);
-    saveTask(db, next); return { task: next, dateChanged: (current.dueDate ?? '') !== (next.dueDate ?? '') };
+    saveTask(db, next); return next;
   });
-  const notice = dateChanged ? (await removeTodayReference(root, task)).notice : 'Task saved.';
-  return { task, notice };
+  return { task, notice: 'Task saved.' };
 }
 export function deleteTask(root: string, original: Task): void {
   database(root, db => {
@@ -47,11 +45,5 @@ export function deleteTask(root: string, original: Task): void {
       throw new Error('Task changed. Open Task actions again and review before deleting.');
     }
     db.prepare('DELETE FROM tasks WHERE id = ?').run(original.id);
-  });
-}
-export function setToday(root: string, id: string, included: boolean): void {
-  database(root, db => {
-    currentTask(db, id);
-    db.prepare(included ? 'INSERT OR IGNORE INTO today(task_id) VALUES (?)' : 'DELETE FROM today WHERE task_id = ?').run(id);
   });
 }

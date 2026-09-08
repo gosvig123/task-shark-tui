@@ -1,8 +1,9 @@
+import { localDate } from '../src/task-today.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { temporary } from './helpers.js';
 import { createTask, loadTaskSnapshot } from '../src/task-api.js';
-import { readTask, mutateTask, deleteTask, setToday } from '../src/task-mutations.js';
+import { readTask, mutateTask, deleteTask } from '../src/task-mutations.js';
 import { manageTaskList } from '../src/task-lists.js';
 import { AgentBoardHelper } from '../src/agent-board-helper.js';
 
@@ -30,7 +31,7 @@ test('subtasks, completion, Today and deletion operate on the source task', asyn
   await mutateTask(root, task.id, { expected: { subtasks }, changes: { subtasks: [{ ...subtasks[0], title: 'Renamed', completed: true }] } });
   await mutateTask(root, task.id, { expected: { completed: false }, changes: { completed: true } });
   await mutateTask(root, task.id, { expected: { completed: true }, changes: { completed: false } });
-  setToday(root, task.id, true); setToday(root, task.id, false); setToday(root, task.id, true);
+  await mutateTask(root, task.id, { expected: { dueDate: readTask(root, task.id).dueDate ?? '' }, changes: { dueDate: localDate() } }); await mutateTask(root, task.id, { expected: { dueDate: readTask(root, task.id).dueDate ?? '' }, changes: { dueDate: '' } }); await mutateTask(root, task.id, { expected: { dueDate: readTask(root, task.id).dueDate ?? '' }, changes: { dueDate: localDate() } });
   assert.equal((await loadTaskSnapshot(root, 'today')).tasks.length, 1);
   assert.throws(() => deleteTask(root, task), /Task changed/);
   deleteTask(root, readTask(root, task.id));
@@ -44,7 +45,7 @@ test('Task List operations protect Today, active and nonempty lists', async t =>
   assert.throws(() => manageTaskList(root, 'delete', 'Inbox'), /Active/);
   manageTaskList(root, 'activate', 'Work');
   assert.throws(() => manageTaskList(root, 'delete', 'Inbox'), /empty/);
-  setToday(root, task.id, true); manageTaskList(root, 'rename', 'Inbox', 'Renamed');
+  await mutateTask(root, task.id, { expected: { dueDate: readTask(root, task.id).dueDate ?? '' }, changes: { dueDate: localDate() } }); manageTaskList(root, 'rename', 'Inbox', 'Renamed');
   assert.equal(readTask(root, task.id).ownerList, 'Renamed');
   assert.equal((await loadTaskSnapshot(root, 'today')).tasks[0].ownerList, 'Renamed');
   manageTaskList(root, 'activate', 'Renamed'); manageTaskList(root, 'delete', 'Work');
@@ -64,8 +65,8 @@ test('agent task tools keep fixed IDs and separate current task from brief snaps
 });
 test('an unchanged agent due date preserves Today membership', async t => {
   const { root, task } = await fixture(t);
-  setToday(root, task.id, true);
-  const dueDate = task.dueDate ?? '';
+  await mutateTask(root, task.id, { expected: { dueDate: readTask(root, task.id).dueDate ?? '' }, changes: { dueDate: localDate() } });
+  const dueDate = readTask(root, task.id).dueDate ?? '';
   await mutateTask(root, task.id, { expected: { dueDate }, changes: { dueDate } });
   assert.equal((await loadTaskSnapshot(root, 'today')).tasks.length, 1);
   await mutateTask(root, task.id, { expected: { dueDate }, changes: { dueDate: '2030-01-01' } });

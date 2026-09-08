@@ -1,3 +1,4 @@
+import { localDate } from '../src/task-today.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -6,14 +7,14 @@ import { loadTaskCatalog } from '../src/tasks.js';
 import { createTask, loadTaskSnapshot } from '../src/task-api.js';
 import { database } from '../src/task-database.js';
 import { manageTaskList } from '../src/task-lists.js';
-import { mutateTask, setToday } from '../src/task-mutations.js';
+import { mutateTask, readTask } from '../src/task-mutations.js';
 import { temporary } from './helpers.js';
 
 test('fresh SQLite startup seeds Inbox and empty Today; creation persists without external tools', async t => {
   const root = temporary(t), catalog = await loadTaskCatalog(root);
   assert.deepEqual(catalog.lists, ['Inbox', 'today']); assert.equal(catalog.currentList, 'Inbox');
   assert.deepEqual(catalog.tasks, []); assert.ok(existsSync(join(root, 'tasks.sqlite')));
-  const result = await createTask(root, { list: 'Inbox', title: ' New task ', description: 'Notes\nNext', dueDate: '2026-09-08' });
+  const result = await createTask(root, { list: 'Inbox', title: ' New task ', description: 'Notes\nNext', dueDate: '9999-01-01' });
   assert.equal(result.confirmed, true);
   const task = (await loadTaskCatalog(root)).tasks[0];
   assert.equal(task.title, 'New task'); assert.equal(task.description, 'Notes\nNext');
@@ -26,14 +27,14 @@ test('catalog matches list snapshots and refreshes edits, renames and Today memb
   await createTask(root, { list: 'today', title: 'Second', description: '' });
   const first = (await loadTaskCatalog(root)).byList.get('Work')![0];
   await mutateTask(root, first.id, { expected: { title: 'First' }, changes: { title: 'Changed' } });
-  setToday(root, first.id, true); manageTaskList(root, 'rename', 'Work', 'Renamed');
+  await mutateTask(root, first.id, { expected: { dueDate: readTask(root, first.id).dueDate ?? '' }, changes: { dueDate: localDate() } }); manageTaskList(root, 'rename', 'Work', 'Renamed');
   const catalog = await loadTaskCatalog(root);
   for (const list of catalog.lists) assert.deepEqual(catalog.byList.get(list), (await loadTaskSnapshot(root, list)).tasks);
   assert.equal(catalog.tasks.length, 2);
   assert.equal(catalog.byList.get('Renamed')![0].title, 'Changed');
   assert.equal(catalog.byList.has('Work'), false);
   assert.ok(catalog.tasks.every(task => task.placement === 'direct'));
-  setToday(root, first.id, false);
+  await mutateTask(root, first.id, { expected: { dueDate: readTask(root, first.id).dueDate ?? '' }, changes: { dueDate: '' } });
   assert.equal((await loadTaskCatalog(root)).byList.get('today')!.length, 1);
 });
 test('blank creation and missing lists fail without inserting tasks; transactions roll back', async t => {
@@ -44,7 +45,7 @@ test('blank creation and missing lists fail without inserting tasks; transaction
   assert.throws(() => database(root, db => { db.prepare('INSERT INTO task_lists(name) VALUES (?)').run('Rollback'); throw new Error('rollback'); }));
   assert.deepEqual((await loadTaskCatalog(root)).lists, ['Inbox', 'today']);
 });
-test('catalog reads retain Today membership with canonical task identity and no reset', async t => {
+test('catalog reads retain Today membership with canonical task identity while dates match', async t => {
   const root = temporary(t);
   await createTask(root, { list: 'today', title: 'Today task', description: '' });
   const first = await loadTaskCatalog(root), before = readFileSync(join(root, 'tasks.sqlite'));

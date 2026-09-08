@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 """Navigation and saved filters against isolated fake services and captured real frames."""
 import os
 import json
@@ -15,7 +16,7 @@ key, drain, frame = creation['key'], creation['drain'], workspace['frame']
 def start(root):
     pi = creation['fixture'](root)
     task = {'id': 'second', 'title': 'Second calendar task', 'completed': False,
-        'ownerList': 'Work', 'dueDate': '2026-09-09', 'subtasks': [],
+        'ownerList': 'Work', 'dueDate': (datetime.now() - timedelta(days=1)).date().isoformat(), 'subtasks': [],
         'description': '\n'.join('Second detail line ' + str(i) for i in range(40))}
     creation['sql'](root, 'INSERT OR IGNORE INTO tasks VALUES (?, ?, ?)', ('second', 'Work', json.dumps(task)))
     pid, fd = pty.fork()

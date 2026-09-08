@@ -20,7 +20,15 @@ def lists(fd, root):
     assert creation['state'](root)['byList']['Created in UI'][0]['title'] == 'Control task'
 
 
+def toggle_completion(fd, root):
+    key(fd, ESC); key(fd, '1'); key(fd, ' '); drain(fd)
+    assert creation['state'](root)['byList']['Created in UI'][0]['completed']
+    key(fd, ' '); drain(fd)
+    assert not creation['state'](root)['byList']['Created in UI'][0]['completed']
+
+
 def actions(fd, root):
+    toggle_completion(fd, root)
     key(fd, 'v'); key(fd, '\r'); drain(fd)
     assert creation['state'](root)['byList']['Created in UI'][0]['completed']
     key(fd, 'v'); key(fd, '\r'); drain(fd)

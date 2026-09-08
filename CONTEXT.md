@@ -24,7 +24,7 @@ The source list that owns a task in the local task store.
 The local list used as the default creation destination in All Lists or Today.
 
 **Today**:
-The local collection of references to source tasks selected for today.
+The live view of source tasks whose due date matches the current local calendar date.
 
 **Creation Draft**:
 An unfinished task creation flow or empty, editable conversation that is not saved.
@@ -54,7 +54,7 @@ A message with failed or uncertain delivery that is kept for manual resubmission
 The destination for completed Pi responses that have not been acknowledged.
 
 **Conversation Task Status**:
-The Needs Input, Running, For Review, or Finished state shown for a conversation.
+The Needs Input, Running, For Review, Finished, or Failed state shown for a conversation.
 
 ## Relationships
 
@@ -75,9 +75,11 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 - Task title, notes, and due date can be edited in **Task Workspace** with explicit Save; task notes are separate from **Board Updates**.
 - The task editor keeps Title, Due date, and multiline Notes in one draft form. Tab/Shift-Tab moves focus; Ctrl-S or Save applies changes, and Escape or Cancel discards them. Enter in Notes adds a line, never saves.
 - Task edits update the current **Task Workspace** and future conversation snapshots, not the fixed task snapshot of an existing **Task-backed Conversation**.
-- Today contains references to source tasks, never separate task copies; changing a source task's due date removes its Today reference without deleting the source task.
-- Saving a task date and removing its Today reference are separate operations; failed reference removal does not roll back the saved date.
-- Pending **Pi Requests** and failed runs take priority over Running and For Review.
+- Today derives membership from source task due dates, never separate copies or saved membership; changing a date into or out of today adds or removes the task from Today without deleting its source.
+- Today refreshes after task changes and at local midnight; overdue and undated tasks are excluded, while completion remains a separate status filter.
+- Needs Input means an unanswered **Pi Request**; answering or expiring the request clears that state.
+- Stopped, interrupted, and failed runs are Failed, never Needs Input; stale Needs Input entries become Failed after restart.
+- Successful completion moves a conversation to For Review.
 - Message answers the selected conversation’s pending **Pi Request** before composing a new message; cancelling that request sends its cancellation.
 - Opening completed work or marking it reviewed changes For Review to Finished.
 - **Queued Messages** run in order; interrupted messages require manual resubmission.
@@ -88,9 +90,9 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 - A conversation **Creation Draft** is saved with its first nonblank message, before delivery to Pi.
 - A **Generated Conversation Title** runs in the background after first-message save; it keeps an explicit title and keeps the fallback title if generation fails.
 - Cancelling a **Creation Draft** saves no task or conversation, creates no **Agent Workspace**, and starts no Pi process.
-- Local **Task Lists** load automatically at startup; a fresh store starts with Inbox as the **Active Task List** and empty Today. Task creation still needs explicit confirmation; Today membership never resets automatically.
+- Local **Task Lists** load automatically at startup; a fresh store starts with Inbox as the **Active Task List** and empty Today. Task creation still needs explicit confirmation; Creating in Today defaults the due date to today unless a date is explicitly supplied.
 - A **Task List** filter does not change the **Active Task List**.
 
-- Task actions complete/reopen tasks, edit subtasks, explicitly add/remove Today references, and confirm deletion. Task deletion preserves conversations.
+- Task actions complete/reopen tasks, edit subtasks, set the due date to today or clear the due date, and confirm deletion. Task deletion preserves conversations.
 - Manage Task Lists creates and renames source lists, sets the Active Task List, and deletes only empty non-active lists. Today is reserved.
 - Pi task_read reads the current fixed-ID task; task_update changes validated fields with atomic expected-field conflict checks. Neither tool manages lists or deletes tasks.

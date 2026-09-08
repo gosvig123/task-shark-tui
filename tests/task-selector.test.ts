@@ -3,8 +3,11 @@ import { open } from '../src/ui/actions.js';
 import assert from 'node:assert/strict';
 import { View } from '../src/ui/view.js';
 import { NavigationMemory } from '../src/ui/navigation-memory.js';
-import { reconcileTasks, selectTask, selectorState, taskRows } from '../src/ui/task-selector.js';
+import { taskDisplayRows, reconcileTasks, selectTask, selectorState, taskRows } from '../src/ui/task-selector.js';
 import { workspaceContent, openWorkspace } from '../src/ui/workspace.js';
+import { toggleTaskCompletion } from '../src/ui/task-controls.js';
+import type { Config } from '../src/config.js';
+import { moveWorkspace } from '../src/ui/workspace-navigation.js';
 import { workspaceKey } from '../src/ui/workspace-keys.js';
 import { TaskFilter } from '../src/ui/task-filters.js';
 import { Boards } from '../src/board-state.js';
@@ -23,6 +26,28 @@ function fixture() {
     detail: { width: 70, childBase: 0 }, notice: '' }) as View;
   return { view, tasks, conversations };
 }
+test('Task List headings remove repeated list names and arrows skip headings', () => {
+  const { view, tasks } = fixture(); tasks[1].ownerList = 'Personal'; reconcileTasks(view);
+  const rows = taskDisplayRows(view);
+  assert.deepEqual(rows.filter(r => r.section).map(r => r.section), ['Personal', 'Work']);
+  assert.ok(rows.filter(r => r.task).every(r => !r.label.includes(r.task!.ownerList)));
+  assert.equal(view.taskScope?.id, tasks[1].id);
+  moveWorkspace(view, 1); assert.equal(view.taskScope?.id, tasks[0].id);
+  moveWorkspace(view, -1); assert.equal(view.taskScope?.id, tasks[1].id);
+  selectorState(view).query = 'Alpha'; reconcileTasks(view);
+  assert.deepEqual(taskDisplayRows(view).filter(r => r.section).map(r => r.section), ['Work']);
+});
+test('completion toggles in task navigation and respects status filters', async () => {
+  const { view, tasks } = fixture(); reconcileTasks(view);
+  const config = { demo: true } as Config;
+  await toggleTaskCompletion(view, config); assert.equal(view.taskScope?.completed, true);
+  await toggleTaskCompletion(view, config); assert.equal(view.taskScope?.completed, false);
+  selectorState(view).taskFilter = TaskFilter.pending;
+  await toggleTaskCompletion(view, config); reconcileTasks(view);
+  assert.equal(view.taskScope?.id, tasks[1].id);
+  view.workspaceSection = 'Conversations'; await toggleTaskCompletion(view, config);
+  assert.equal(view.taskScope?.completed, false);
+});
 test('Tasks immediately selects a visible task; changing it refreshes Details, Board, and Conversations', async () => {
   const { view, tasks, conversations } = fixture(); reconcileTasks(view);
   assert.equal(view.taskScope, tasks[0]); assert.match(workspaceContent(view), /Alpha/);

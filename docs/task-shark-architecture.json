@@ -45,7 +45,7 @@
       "id": "tasks",
       "type": "database",
       "label": "Local Task Store",
-      "sublabel": "SQLite: lists, tasks, Today, Board",
+      "sublabel": "SQLite: lists, tasks, Board",
       "pos": [540, 120],
       "size": [200, 64]
     },
@@ -151,7 +151,7 @@
     {
       "dot": "emerald",
       "title": "Task and conversation scope",
-      "items": ["Task Lists and Today references stay local.", "Each Task-backed Conversation has a fixed Agent Workspace."]
+      "items": ["Today derives from local task dates; edits and midnight refresh it.", "Each Task-backed Conversation has a fixed Agent Workspace."]
     },
     {
       "dot": "violet",

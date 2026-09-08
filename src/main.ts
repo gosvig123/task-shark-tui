@@ -1,3 +1,4 @@
+import { watchTaskChanges } from './ui/task-refresh.js';
 import { configuration } from './config.js';
 import { Store } from './store.js';
 import { lockStore } from './lock.js';
@@ -38,6 +39,7 @@ function main(): void {
     const view = new View(runtime);
     const shutdown = lifecycle(view, runtime, release);
     bindKeys(view, config, shutdown);
+    watchTaskChanges(view, config);
     runtime.on('task-update', () => { void refreshTasks(view, config); });
     view.render(); void refreshTasks(view, config);
   } catch (error) { release(); throw error; }

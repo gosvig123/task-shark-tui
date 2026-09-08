@@ -1,6 +1,4 @@
-import { todayList } from '../task-today.js';
-import { taskKey } from './navigation-memory.js';
-import { recoverToday, removeDemoToday } from './task-today.js';
+import { todayList, todayTasks } from '../task-today.js';
 import type { Task } from '../model.js';
 import type { Config } from '../config.js';
 import { loadTaskSnapshot } from '../task-api.js';
@@ -14,6 +12,7 @@ export function replaceCatalogTask(view: View, task: Task): void {
   for (const [list, tasks] of view.catalog.byList) view.catalog.byList.set(list, tasks.map(t =>
     t.id === task.id && t.ownerList === task.ownerList ? { ...structuredClone(task), placement: t.placement } : t));
   view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat());
+  view.catalog.byList.set(todayList, todayTasks(view.catalog.tasks));
   if (view.taskScope?.id === task.id && view.taskScope.ownerList === task.ownerList) view.taskScope = structuredClone(task);
 }
 async function latest(view: View, config: Config, task: Task): Promise<Task> {
@@ -25,7 +24,6 @@ async function latest(view: View, config: Config, task: Task): Promise<Task> {
 }
 export async function editTask(view: View, config: Config): Promise<void> {
   if (!view.taskScope) { view.notice = 'Open a Task Workspace before editing.'; return; }
-  if (view.todayRemovals.has(taskKey(view.taskScope))) { await recoverToday(view, config, view.taskScope); return; }
   const focus = view.workspaceFocus;
   view.notice = 'Loading current task details…'; view.render();
   try {
@@ -51,9 +49,6 @@ async function save(view: View, config: Config, editor: Editor): Promise<boolean
   const task = result.snapshot?.tasks.find(t => t.id === editor.original.id && t.ownerList === editor.original.ownerList);
   if (!task) { editor.blocked = true; editor.notice = 'Saved result is missing from source. Review latest source before retrying.'; return false; }
   if (!config.demo) await refreshTasks(view, config);
-  if (view.notice.startsWith('Tasks unavailable:') && 'todaySnapshot' in result && result.todaySnapshot) view.catalog.byList.set(todayList, result.todaySnapshot.tasks);
-  if (config.demo && 'dueDate' in changes) result.notice = removeDemoToday(view, task);
-  if ('todayPending' in result && result.todayPending) view.todayRemovals.add(taskKey(task));
   replaceCatalogTask(view, task); view.notice = result.notice;
   return true;
 }

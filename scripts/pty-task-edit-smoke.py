@@ -20,7 +20,7 @@ def open_editor(fd, root):
     key(fd, 'e')
     for _ in range(50):
         text = Path(root, 'frame.txt').read_text()
-        if 'Edit task' in text or 'Date already saved' in text:
+        if 'Edit task' in text:
             return
         drain(fd, .1)
     raise AssertionError('Task editor did not finish loading its source snapshot')
@@ -116,30 +116,25 @@ def demo():
             raise
 
 
-def edit_today(fd, root, mode):
+def edit_today(fd, root):
     creation['startup'](fd, root)
-    creation['local']['update'](root, {**current(root), 'dueDate': ''})
-    key(fd, 'f'); drain(fd, .5)
     key(fd, 'l'); key(fd, 'today'); key(fd, '\r'); key(fd, '\r'); open_editor(fd, root)
-    field(fd, 2, datetime.now(timezone.utc).date().isoformat())
-    if mode == 'remove-conflict':
-        creation['sql'](root, "CREATE TRIGGER refuse_removal BEFORE DELETE ON today BEGIN SELECT RAISE(ABORT, 'blocked'); END")
+    field(fd, 2, '')
     key(fd, '\x13'); drain(fd, .7)
-    if mode == 'remove-conflict':
-        assert 'removal pending' in frame(root, 'today-removal-pending')
-        creation['sql'](root, 'DROP TRIGGER refuse_removal'); open_editor(fd, root); key(fd, DOWN + '\r'); drain(fd, .7)
-    key(fd, '\x1b'); text = frame(root, 'today-back-' + (mode or 'removed'))
+    key(fd, '\x1b'); text = frame(root, 'today-date-cleared')
     assert 'No tasks match' in text
-    state = creation['state'](root)
-    assert state['byList']['Work'] and state['currentList'] == 'Empty list'
-    assert current(root)['dueDate'] == datetime.now(timezone.utc).date().isoformat()
+    assert creation['state'](root)['byList']['Work']
+    assert current(root)['dueDate'] == ''
+    creation['local']['update'](root, {**current(root), 'dueDate': datetime.now().date().isoformat()})
+    drain(fd, 1.5)
+    assert 'No tasks match' not in frame(root, 'today-external-date-added')
 
 
-def today_case(mode):
+def today_case():
     with tempfile.TemporaryDirectory(prefix='task-today-edit-') as root:
         pid, fd = navigation['start'](root)
         try:
-            edit_today(fd, root, mode); creation['smoke']['stop'](pid, fd)
+            edit_today(fd, root); creation['smoke']['stop'](pid, fd)
         except BaseException:
             os.kill(pid, signal.SIGKILL); os.waitpid(pid, 0); os.close(fd)
             raise
@@ -155,8 +150,8 @@ def main():
             os.kill(pid, signal.SIGKILL); os.waitpid(pid, 0); os.close(fd)
             raise
     demo()
-    for mode in ['', 'remove-conflict']: today_case(mode)
-    print('Task edit PTY passed: prefill, cancel/noop, invalid date, multiline save, clear, cursor/control editing, Unicode, Today removal/recovery, conflict retention, back and resize.')
+    today_case()
+    print('Task edit PTY passed: prefill, cancel/noop, invalid date, multiline save, clear, cursor/control editing, Unicode, dynamic Today, conflict retention, back and resize.')
 
 
 if __name__ == '__main__':

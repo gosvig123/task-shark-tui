@@ -26,13 +26,14 @@ approval prompts when a Pi extension requests one; it does not add approval chec
 to every tool. Model calls can cost money.
 
 Use `g` (or `l` → Manage Task Lists) to create, rename, set Active, or delete empty non-active lists.
-Use `v` in Task Workspace for completion, subtasks, Today membership, and confirmed task deletion.
+Use `v` in Task Workspace for completion, subtasks, setting or clearing due dates, and confirmed task deletion.
 Conversations stay saved when their task is deleted.
 
 **Local Task Lists load automatically at startup.** A fresh store starts with empty
 Inbox (the Active Task List) and Today. No external tasks or widget installation is needed.
 Press `f` to refresh. Creation saves only after you confirm **Create pending task**.
-Today contains source-task references; there is no automatic daily reset.
+Today shows source tasks due on the current local date, including completed tasks unless filtered.
+It refreshes after edits and at midnight; overdue and undated tasks are excluded.
 Try the offline version first:
 ```sh
 npm run demo
@@ -52,7 +53,7 @@ in memory until quit; it never writes a task file.
    Confirmation saves a **Pending** task. Choosing a filter does not switch your
    Active Task List. No list is created or deleted.
 3. Tasks opens Task Workspace directly. The inline searchable task selector fills
-   the upper half of the left pane, with Conversations below. The right preview shows all Board Updates directly below task details.
+   the left pane above Conversations, which grows with its rows up to half the pane. The right preview shows all Board Updates directly below task details.
    Use `1`/`2` or arrows to highlight items without marking them reviewed.
    `Enter` opens the preview and focuses right; only conversations are acknowledged on open.
    `Escape` returns focus left. From left navigation it clears search, but keeps the Task List and status filters.
@@ -100,6 +101,8 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `e` in Task Workspace | Edit title, multiline notes, or due date; explicit Save/Cancel |
 | `/`, `Escape` | Search inline in the current list; Enter/Escape keeps query; Escape from navigation clears it |
 | `f` | Refresh tasks |
+| `z`, `Escape` | Toggle full-width content; Escape restores navigation |
+| `Ctrl-G` | Read the complete first user message; Original goal stays fixed above the chat |
 | `PageUp`, `PageDown`, `End` | Scroll transcript; follow live output |
 | `?` | Controls |
 | `q`, `Ctrl-C` | Quit; confirm if a run is active |
@@ -134,13 +137,13 @@ not concatenate session branches or rewrite Pi session files.
 | `TASK_SHARK_PI` | Pi executable path; default searches PATH and `~/.pi/agent/bin/pi` |
 | `TASK_SHARK_NAMING_MODEL` | Conversation title model; default `openai-codex/gpt-5.6-terra` |
 
-Task Lists, tasks, Today references, and Board Updates live in `tasks.sqlite` under
+Task Lists, tasks, and Board Updates live in `tasks.sqlite` under
 the data directory. Native Node SQLite transactions serialize local reads and writes.
 No external task/widget data is imported, read, changed, or migrated.
 Task edits compare changed fields with the original draft inside the transaction;
 conflicts keep the draft for explicit source review. Blank notes/date clears them.
-Date changes remove Today references in a separate operation; a failed removal can
-be retried with `e` without resaving the date. Source tasks are preserved.
+Today membership is derived from due dates, not stored separately. Setting a due date
+to today includes the source task; changing or clearing it excludes the task.
 Existing conversation task snapshots stay fixed; new conversations use updated details.
 Conversation storage is unchanged. Demo tasks and Board Updates stay in memory.
 This version does not import macOS conversations, manage Ticks, or embed a shell/editor pane.
@@ -179,7 +182,7 @@ check and file-limit check require Python 3; it drives the real interface in dem
 concurrent requests, long approvals at 100×32 and 60×20, Unicode titles, refresh, resize, restart, quit, signal cleanup, automatic startup task loading, empty lists,
 every creation cancellation step, blank submissions, and successful `n` flows.
 No model calls or real task changes occur. Temporary-database tests cover fresh
-startup, creation, conflicting edits, Today reference removal/recovery, rollback,
+startup, creation, conflicting edits, date-derived Today membership, rollback,
 Board paging/review, concurrent posts, retry deduplication, and fixed attribution.
 Source files stay within 200 lines and functions within 25.
 

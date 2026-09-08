@@ -1,28 +1,34 @@
+import { localDate } from '../task-today.js';
 import { randomUUID } from 'node:crypto';
 import type { Task } from '../model.js';
 import type { Config } from '../config.js';
-import { applyTaskPatch, deleteTask, mutateTask, readTask, setToday, type TaskPatch } from '../task-mutations.js';
+import { applyTaskPatch, deleteTask, mutateTask, readTask, type TaskPatch } from '../task-mutations.js';
 import { choose, textInput } from './dialogs.js';
 import { replaceCatalogTask } from './task-edit.js';
 import { refreshTasks } from './refresh.js';
 import type { View } from './view.js';
 import { deduplicate } from '../tasks.js';
 
+const dueTodayAction = 'Set due date to today', clearDateAction = 'Clear due date';
 export async function taskActions(view: View, config: Config): Promise<void> {
   if (!view.taskScope) { view.notice = 'Select a task in Tasks first.'; return; }
   const task = config.demo ? structuredClone(view.taskScope) : readTask(config.root, view.taskScope.id);
   const action = await choose(view.screen, `Task actions · ${task.title}`, [task.completed ? 'Reopen' : 'Complete',
-    'Subtasks', 'Add to Today', 'Remove from Today', 'Delete task']);
+    'Subtasks', dueTodayAction, clearDateAction, 'Delete task']);
   if (!action) return;
   if (action === 'Delete task') { await confirmDelete(view, config, task); return; }
-  if (action === 'Add to Today' || action === 'Remove from Today') {
-    if (config.demo) demoToday(view, task, action === 'Add to Today');
-    else setToday(config.root, task.id, action === 'Add to Today');
-    await refreshTasks(view, config); view.notice = `${action}: ${task.title}. Source task preserved.`; return;
-  }
-  const changes = action === 'Subtasks' ? await editSubtasks(view, task) : { completed: !task.completed };
+  const changes = action === dueTodayAction ? { dueDate: localDate() } : action === clearDateAction ? { dueDate: '' } :
+    action === 'Subtasks' ? await editSubtasks(view, task) : { completed: !task.completed };
   if (!changes) return;
-  const expected = Object.fromEntries(Object.keys(changes).map(key => [key, task[key as keyof Task]]));
+  await saveTaskChanges(view, config, task, changes);
+}
+export async function toggleTaskCompletion(view: View, config: Config): Promise<void> {
+  if (!view.taskScope || view.workspaceSection !== 'Details') return;
+  const task = config.demo ? structuredClone(view.taskScope) : readTask(config.root, view.taskScope.id);
+  await saveTaskChanges(view, config, task, { completed: !task.completed });
+}
+async function saveTaskChanges(view: View, config: Config, task: Task, changes: TaskPatch): Promise<void> {
+  const expected = Object.fromEntries(Object.keys(changes).map(key => [key, task[key as keyof Task] ?? '']));
   const result = config.demo ? { task: applyTaskPatch(task, expected, changes), notice: 'Demo task saved in memory.' } :
     await mutateTask(config.root, task.id, { expected, changes });
   if (!config.demo) await refreshTasks(view, config);
@@ -34,13 +40,7 @@ async function confirmDelete(view: View, config: Config, task: Task): Promise<vo
   for (const [list, tasks] of view.catalog.byList) view.catalog.byList.set(list, tasks.filter(item => item.id !== task.id));
   view.catalog.tasks = deduplicate([...view.catalog.byList.values()].flat()); view.taskScope = undefined;
   if (!config.demo) await refreshTasks(view, config);
-  view.notice = 'Task deleted, including its Today reference. Existing conversations are unchanged.';
-}
-function demoToday(view: View, task: Task, included: boolean): void {
-  const items = (view.catalog.byList.get('today') ?? []).filter(item => item.id !== task.id);
-  if (included) items.push({ ...task, placement: 'reference' });
-  view.catalog.byList.set('today', items);
-  if (!view.catalog.lists.includes('today')) view.catalog.lists.push('today');
+  view.notice = 'Task deleted. Existing conversations are unchanged.';
 }
 async function editSubtasks(view: View, task: Task): Promise<TaskPatch | undefined> {
   const labels = task.subtasks.map((item, index) => `${index + 1}. ${item.completed ? '[x]' : '[ ]'} ${item.title}`);

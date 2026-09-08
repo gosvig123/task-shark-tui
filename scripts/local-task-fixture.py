@@ -1,3 +1,4 @@
+from datetime import datetime
 """Read and mutate only temporary SQLite task stores in PTY tests."""
 import json
 import sqlite3
@@ -13,10 +14,10 @@ def sql(root, statement, parameters=()):
 def state(root):
     lists = sql(root, 'SELECT name, active FROM task_lists ORDER BY name')
     tasks = [json.loads(row[0]) for row in sql(root, 'SELECT data FROM tasks ORDER BY rowid')]
-    today = {row[0] for row in sql(root, 'SELECT task_id FROM today')}
+    today = datetime.now().date().isoformat()
     return {'currentList': next(name for name, active in lists if active),
             'byList': {**{name: [task for task in tasks if task['ownerList'] == name] for name, _ in lists},
-                       'today': [task for task in tasks if task['id'] in today]}}
+                       'today': [task for task in tasks if (task.get('dueDate') or '')[:10] == today]}}
 
 
 def update(root, task):
