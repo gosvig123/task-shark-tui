@@ -43,17 +43,17 @@
     },
     {
       "id": "tasks",
-      "type": "external",
-      "label": "tasks-go",
-      "sublabel": "Task List API and snapshots",
+      "type": "database",
+      "label": "Local Task Store",
+      "sublabel": "SQLite: lists, tasks, Today, Board",
       "pos": [540, 120],
       "size": [200, 64]
     },
     {
       "id": "board",
-      "type": "external",
-      "label": "Widget Board Helper",
-      "sublabel": "Shared Board Updates",
+      "type": "backend",
+      "label": "Scoped Task Tools",
+      "sublabel": "Fixed task and conversation IDs",
       "pos": [860, 120],
       "size": [190, 64]
     },
@@ -109,13 +109,11 @@
       "toSide": "bottom"
     },
     {
-      "id": "board-helper",
-      "from": "app",
-      "to": "board",
-      "label": "task-scoped Board Updates",
-      "labelAt": [940, 230],
-      "fromSide": "top",
-      "toSide": "bottom"
+      "id": "scoped-storage",
+      "from": "board",
+      "to": "tasks",
+      "label": "task and Board operations",
+      "labelAt": [800, 198]
     },
     {
       "id": "app-storage",
@@ -139,7 +137,7 @@
       "id": "board-extension",
       "from": "pi",
       "to": "board",
-      "label": "agent Board tools",
+      "label": "task and Board tools",
       "fromSide": "top",
       "toSide": "right"
     }
@@ -148,17 +146,17 @@
     {
       "dot": "cyan",
       "title": "App boundary",
-      "items": ["The terminal app owns navigation and review state.", "Task Shark does not add a second task store."]
+      "items": ["The terminal app owns navigation and review state.", "Native SQLite owns tasks and Board Updates."]
     },
     {
       "dot": "emerald",
       "title": "Task and conversation scope",
-      "items": ["tasks-go remains the Task List authority.", "Each Task-backed Conversation has a fixed Agent Workspace."]
+      "items": ["Task Lists and Today references stay local.", "Each Task-backed Conversation has a fixed Agent Workspace."]
     },
     {
       "dot": "violet",
       "title": "Agent integration",
-      "items": ["Pi runs beneath the app through RPC.", "Board Updates use the installed widget helper and shared task ID scope."]
+      "items": ["Pi runs beneath the app through RPC.", "Task tools use fixed IDs; conversation briefs stay snapshots."]
     }
   ]
 }

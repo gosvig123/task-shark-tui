@@ -29,7 +29,7 @@ test('Tasks immediately selects a visible task; changing it refreshes Details, B
   await view.boards.post(tasks[0].id, 'note', 'Alpha-only board');
   selectTask(view, 'Work/1'); assert.equal(view.taskScope, tasks[1]);
   assert.match(workspaceContent(view), /Beta/); assert.deepEqual(view.rows().map(r => r.conversation), [conversations[1]]);
-  view.workspaceSection = 'Board Updates'; assert.doesNotMatch(workspaceContent(view), /Alpha-only/);
+  view.workspaceSection = 'Details'; assert.doesNotMatch(workspaceContent(view), /Alpha-only/);
   assert.equal(view.boards.state(tasks[0].id).reviewed, 0);
 });
 test('inline query, empty lists, filters, and deleted tasks never leave stale task content', () => {
@@ -64,7 +64,7 @@ test('a delayed Board response stays with its original task after selector navig
     review: async () => 0, post: async () => {}, mark: async (_id, sequence) => sequence };
   Object.assign(view, { boards: new Boards(() => {}, false, client) });
   reconcileTasks(view); assert.equal(view.boards.state(tasks[0].id).loading, true);
-  selectTask(view, 'Work/1'); view.workspaceSection = 'Board Updates'; release();
+  selectTask(view, 'Work/1'); view.workspaceSection = 'Details'; release();
   await pending; await new Promise(resolve => setImmediate(resolve));
   assert.equal(view.taskScope, tasks[1]); assert.equal(view.boards.state(tasks[0].id).loaded, true);
   assert.match(workspaceContent(view), /No Board Updates/); assert.equal(view.boards.state(tasks[1].id).reviewed, 0);

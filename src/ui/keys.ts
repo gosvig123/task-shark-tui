@@ -1,3 +1,5 @@
+import { taskActions } from './task-controls.js';
+import { taskListActions } from './task-list-controls.js';
 import { editTask } from './task-edit.js';
 import { workspaceKey } from './workspace-keys.js';
 import type { View } from './view.js';
@@ -11,11 +13,12 @@ import { TaskFilter } from './task-filters.js';
 
 const help = [
   'c / t / r: Conversations / Tasks / For Review Inbox',
-  'Up / Down: select · Enter: fold/unfold a category, open preview, or mark a conversation read',
-  'Task Workspace: 1/2/3 select stacked left sections; arrows preview items, Enter opens on right',
+  'Up / Down: select conversations, not section headers · Enter: open preview or mark a conversation read',
+  'Task Workspace: 1/2 select stacked left sections; arrows preview items, Enter opens on right',
   'Escape: right pane to left sections; Escape on left clears search, keeps list and status',
+  'v: Task actions (complete, subtasks, Today, delete) · g: Manage Task Lists (create, rename, Active, delete)',
   'e in Task Workspace: edit title, notes, due date; Save explicitly, Escape cancels',
-  'Board Updates: n post/retry · a on right reviews all loaded board entries · f refreshes shared feed',
+  'Task preview updates: u post/retry · a on right reviews all loaded board entries · f refreshes shared feed',
   'n: new task in Tasks selector; new conversation in Conversations',
   'Drafts: Ctrl-T task · Ctrl-W workspace · Ctrl-O title/model · Escape cancels · first message saves',
   'm: message; Ctrl-S sends, Enter adds a line, Esc cancels',
@@ -30,15 +33,16 @@ const help = [
 ];
 export function bindKeys(view: View, config: Config, shutdown: () => Promise<void>): void {
   const actions: Record<string, () => void | Promise<void>> = {
-    c: () => view.switchTab(Tab.conversations), t: () => view.switchTab(Tab.tasks), r: () => view.switchTab(Tab.review),
-    up: () => view.move(-1), down: () => view.move(1), enter: () => open(view),
-    '1': () => {}, '2': () => {}, '3': () => {}, e: () => editTask(view, config),
+    c: () => view.switchTab(Tab.conversations, false), t: () => view.switchTab(Tab.tasks, false), r: () => view.switchTab(Tab.review, false),
+    up: () => view.move(-1, false), down: () => view.move(1, false), enter: () => open(view),
+    '1': () => {}, '2': () => {}, u: () => {}, b: () => {}, e: () => editTask(view, config),
     n: () => (view.tab === Tab.tasks || (view.taskScope && view.workspaceSection === 'Details')) ? createTaskFromView(view, config) : createConversation(view, false, config),
+    v: () => taskActions(view, config), g: () => taskListActions(view, config),
     m: () => compose(view), l: () => selectTaskList(view, config),
     o: () => selectTaskFilter(view), x: () => stopRun(view), d: () => details(view), '/': () => search(view),
     a: () => { const c = view.current()?.conversation; if (c) view.runtime.acknowledge(c); },
     p: () => { const c = view.current()?.conversation; if (c) view.runtime.store.togglePin(c); },
-    f: () => { void refreshTasks(view, config); },
+    f: () => { if (view.taskScope) view.boards.refresh(view.taskScope.id); void refreshTasks(view, config); },
     q: () => quit(view, shutdown), 'C-c': () => quit(view, shutdown),
     escape: () => { view.query = ''; view.taskScope = undefined; view.listFilter = undefined; view.taskFilter = TaskFilter.all; view.follow = true; },
     pageup: () => scroll(view, -10), pagedown: () => scroll(view, 10),

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { AssistantMessageComponent } from '@earendil-works/pi-coding-agent';
 import assert from 'node:assert/strict';
 import { liveState, conversationSchema } from '../src/model.js';
 import { applyEvent, interruptOutput } from '../src/events.js';
@@ -88,6 +89,31 @@ test('width changes reflow the transcript and interrupted thinking is kept', () 
   interruptOutput(c, live);
   assert.match(safe(transcript(c, live, 60)), /Interrupted output\nKept thinking/);
   assert.equal(live.streaming, undefined);
+});
+test('unchanged saved messages render once, including messages without Pi metadata', () => {
+  const { c, live } = fixture(), original = AssistantMessageComponent.prototype.render;
+  let renders = 0;
+  AssistantMessageComponent.prototype.render = function(width) { renders++; return original.call(this, width); };
+  try {
+    c.messages.push({ role: 'assistant', text: 'Saved answer' });
+    transcript(c, live, 60); transcript(c, live, 60); assert.equal(renders, 1);
+    live.partial = 'Streaming'; transcript(c, live, 60);
+    live.partial += ' delta'; transcript(c, live, 60); assert.equal(renders, 3);
+    c.messages[0].text = 'Changed answer'; transcript(c, live, 60); assert.equal(renders, 5);
+  } finally { AssistantMessageComponent.prototype.render = original; }
+});
+test('cached transcript matches a fresh render after history and live output change', () => {
+  const { c, live } = fixture();
+  c.messages.push(transcriptMessage({ role: 'assistant', content: [
+    { type: 'text', text: 'Original' }, { type: 'toolCall', id: 'call', name: 'bash', arguments: { command: 'echo original' } }] }));
+  c.messages.push(transcriptMessage({ role: 'toolResult', toolCallId: 'call', toolName: 'bash', content: 'Original result' }));
+  const compare = () => assert.equal(transcript(c, live, 60), transcript(structuredClone(c), structuredClone(live), 60));
+  compare(); compare();
+  const content = c.messages[0].pi!.content;
+  assert.ok(Array.isArray(content)); content[1].arguments = { command: 'echo changed' };
+  c.messages[1].pi!.content = 'Changed result'; compare();
+  live.partial = 'First delta'; compare(); live.partial += ' next delta'; compare();
+  c.messages.splice(0, 1); compare(); c.messages.length = 0; compare();
 });
 test('saved conversation retains structured Pi tool results on disk', async t => {
   const { store, runtime, root } = runtimeFixture(t);

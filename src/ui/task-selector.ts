@@ -73,6 +73,6 @@ export function conversationTask(view: View, task: Task) {
   const state = { ...(view.navigation.tabs.get(Tab.tasks) ?? snapshot(view)), tab: Tab.tasks };
   if (!view.navigation.tabs.has(Tab.tasks)) Object.assign(state, { query: '', listFilter: undefined, taskFilter: TaskFilter.all });
   const tasks = state.listFilter ? view.catalog.byList.get(state.listFilter) ?? [] : view.catalog.tasks;
-  const current = filterTasks(tasks, state.taskFilter, state.query).find(candidate => taskKey(candidate) === taskKey(task));
+  const current = filterTasks(tasks, state.taskFilter, state.query).find(candidate => candidate.id === task.id);
   if (current) return { task: current, state: { ...state, selected: `${current.ownerList}/${current.id}` } };
 }

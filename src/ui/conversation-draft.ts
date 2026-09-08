@@ -1,5 +1,4 @@
 import { messageEditor } from './message-editor.js';
-import { allProgress } from './board-preview.js';
 import type { Task } from '../model.js';
 import type { View } from './view.js';
 import { textInput } from './dialogs.js';
@@ -14,7 +13,7 @@ export function submitDraft(view: View, draft: ConversationDraft): boolean {
   if (!draft.text.trim()) return false;
   const c = view.runtime.store.create(draft.title, draft.workspace, draft.model, draft.task, draft.text);
   view.selected = c.id; view.taskScope = draft.task;
-  view.workspaceSection = 'Conversations'; view.workspaceFocus = 'right'; view.boardSequence = allProgress;
+  view.workspaceSection = 'Conversations'; view.workspaceFocus = 'right';
   if (draft.task) void view.boards.load(draft.task.id);
   void view.runtime.send(c, draft.text);
   return true;

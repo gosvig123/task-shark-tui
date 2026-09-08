@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { accessSync, constants } from 'node:fs';
 
-export interface Config { root: string; demo: boolean; pi: string; tasks: string; namingModel?: string }
+export interface Config { root: string; demo: boolean; pi: string; namingModel?: string }
 export function executable(name: string, candidates: string[]): string {
   const paths = [...(process.env.PATH ?? '').split(':').map(p => join(p, name)), ...candidates];
   return paths.find(path => {
@@ -20,6 +20,5 @@ export function configuration(): Config {
     root: expandPath(demo ? join(base, 'demo') : base), demo,
     namingModel: process.env.TASK_SHARK_NAMING_MODEL?.trim() || undefined,
     pi: process.env.TASK_SHARK_PI ?? executable('pi', [join(home, '.pi/agent/bin/pi')]),
-    tasks: process.env.TASK_SHARK_TASKS ?? executable('tasks', [join(home, '.local/bin/tasks')]),
   };
 }

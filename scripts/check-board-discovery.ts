@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { executable } from '../src/config.js';
 import { join, resolve } from 'node:path';
@@ -14,7 +14,7 @@ function environment(task: boolean): NodeJS.ProcessEnv {
   return { HOME: home, PATH: process.env.PATH, PI_CODING_AGENT_DIR: join(home, '.pi/agent'),
     PI_OFFLINE: '1', PI_TELEMETRY: '0', TASKSHARK_BOARD_ROOT: join(home, 'board'),
     ...(task ? { TASKSHARK_TASK_ID: scope.taskID, TASKSHARK_THREAD_ID: scope.threadID,
-      TASKSHARK_BOARD_HELPER: join(home, 'helper/cli.mjs') } : {}) };
+      TASKSHARK_TASK_BRIEF: JSON.stringify({ id: scope.taskID, title: 'Isolated task' }) } : {}) };
 }
 function probe(task: boolean, resumed = false): Promise<void> {
   return new Promise((done, reject) => {
@@ -51,10 +51,6 @@ function verify(wire: any, task: boolean): void {
   console.log(`${task ? 'Task' : 'General'} RPC discovery passed: ${task ? agentBoardTools.join(', ') : 'no Board integration'}`);
 }
 try {
-  mkdirSync(join(home, 'helper'));
-  for (const name of ['cli.mjs', 'store.mjs', 'storage.mjs']) {
-    writeFileSync(join(home, 'helper', name), 'throw new Error("Discovery must not invoke helper");\n');
-  }
   console.log(`Pi binary: ${resolve(binary)}; isolated HOME, offline, no prompt/model call.`);
   writeFileSync(join(home, 'resume.jsonl'), JSON.stringify({ type: 'session', version: 3,
     id: '00000000-0000-4000-a000-000000000002', timestamp: new Date().toISOString(), cwd: home }) + '\n', { mode: 0o600 });

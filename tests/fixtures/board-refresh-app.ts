@@ -33,11 +33,11 @@ const c = store.create('Running A', root, '', demoTasks[0]);
 await runtime.send(c, 'Local fixture only');
 async function shutdown() { await runtime.close(); view.destroy(); process.exit(); }
 process.on('SIGTERM', () => { void shutdown(); });
-bindKeys(view, { root, demo: true, pi: '/not-used', tasks: '/not-used' }, shutdown);
+bindKeys(view, { root, demo: true, pi: '/not-used' }, shutdown);
 view.screen.key('z', () => {
   delayed = true;
   entries.push({ ...entries[0], sequence: 2, id: 'two', requestId: 'request-two', kind: 'progress', body: 'Agent posted progress' });
   client.emit('event', { type: 'tool_execution_end', toolName: 'board_post', toolCallId: 'post', isError: false });
 });
-view.screen.key('v', () => { delayed = false; finish?.(); });
+view.screen.key('b', () => { delayed = false; finish?.(); });
 view.switchTab('Tasks');

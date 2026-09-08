@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { ConversationSection, Status, type Conversation } from '../src/model.js';
 import { conversationRows } from '../src/ui/conversation-sections.js';
 import { View, Tab } from '../src/ui/view.js';
-import { open } from '../src/ui/actions.js';
 
 function conversation(id: string, changes: Partial<Conversation> = {}): Conversation {
   return { id, title: `Chat ${id}`, workspace: '/tmp', demo: true, status: Status.finished,
@@ -43,16 +42,17 @@ test('Task Workspace stays flat and ignores collapsed categories', () => {
   assert.ok(rows.every(r => r.conversation && !r.section));
 });
 
-test('Enter folds and unfolds a heading without acknowledging chats; movement skips hidden chats', () => {
+test('movement skips section headings and hidden chats without acknowledging conversations', () => {
   const view = Object.assign(Object.create(View.prototype), { tab: Tab.conversations, query: '',
-    selected: 'section:Pinned', collapsedSections: new Set(), render() {},
-    runtime: { store: { conversations: chats }, acknowledge() { assert.fail('Heading must not acknowledge'); } } });
-  open(view);
-  assert.equal(view.current().label, '▸ Pinned');
-  view.move(1); assert.equal(view.current().section, Status.needsInput);
-  view.move(-1); open(view);
-  assert.equal(view.current().label, '▾ Pinned');
-  view.move(1); assert.equal(view.current().conversation.id, 'pin');
+    selected: 'section:Pinned', collapsedSections: new Set([ConversationSection.pinned]), render() {},
+    runtime: { store: { conversations: chats }, acknowledge() { assert.fail('Movement must not acknowledge'); } } });
+  assert.equal(view.current().conversation.id, 'input');
+  view.move(1); assert.equal(view.current().conversation.id, 'review');
+  view.move(-1); assert.equal(view.current().conversation.id, 'input');
+  view.move(-1); assert.equal(view.current().conversation.id, 'input');
+  view.collapsedSections.clear(); view.selected = 'pin';
+  assert.equal(view.current().conversation.id, 'pin');
+  view.move(1); assert.equal(view.current().conversation.id, 'input');
   view.query = 'old';
   assert.deepEqual(view.rows().map((r: { key: string }) => r.key), ['section:Recent', 'old']);
 });

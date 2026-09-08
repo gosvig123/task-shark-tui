@@ -11,7 +11,7 @@ export async function workspaceKey(view: View, key: string): Promise<boolean> {
     else selectorState(view).query = '';
     return true;
   }
-  if (['1', '2', '3'].includes(key)) { workspaceSection(view, ['Details', 'Board Updates', 'Conversations'][Number(key) - 1] as typeof view.workspaceSection); return true; }
+  if (['1', '2'].includes(key)) { workspaceSection(view, ['Details', 'Conversations'][Number(key) - 1] as typeof view.workspaceSection); return true; }
   if (key === 'enter') {
     if (view.workspaceFocus === 'left' && view.workspaceSection === 'Conversations') {
       const c = view.current()?.conversation; if (c) view.runtime.acknowledge(c);
@@ -27,10 +27,10 @@ export async function workspaceKey(view: View, key: string): Promise<boolean> {
 }
 async function interactionKey(view: View, key: string): Promise<boolean> {
   const section = view.workspaceSection;
-  if (section === 'Board Updates') {
+  if (section === 'Details' && view.taskScope) {
     if (key === 'end') { view.follow = false; view.detail.setScrollPerc(100); return true; }
-    if (key === 'n') { await postBoard(view); return true; }
-    if (key === 'f') { void view.boards.load(view.taskScope!.id); return true; }
+    if (key === 'b') { await view.boards.earlier(view.taskScope!.id); view.follow = false; view.detail.setScroll(0); return true; }
+    if (key === 'u') { await postBoard(view); return true; }
     if (key === 'a' && view.workspaceFocus === 'right') { void view.boards.mark(view.taskScope!.id); return true; }
   }
   if (['m', 'x', 'p', 'a'].includes(key) && (view.workspaceFocus === 'left' || section !== 'Conversations')) {

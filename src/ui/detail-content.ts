@@ -1,7 +1,7 @@
 import type { Widgets } from 'blessed';
 
 export function setDetailContent(detail: Widgets.BoxElement, content: string): void {
-  detail.setContent(content);
+  if (detail.content !== content) detail.setContent(content);
   const height = Math.max(0, Number(detail.height) - Number(detail.iheight));
   const maximum = Math.max(0, detail.getScreenLines().length - height);
   if (detail.childBase <= maximum) return;

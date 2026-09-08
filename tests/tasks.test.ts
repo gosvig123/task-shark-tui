@@ -1,66 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseSnapshot, deduplicate, loadTasks, loadTaskCatalog } from '../src/tasks.js';
-import { createTask } from '../src/task-api.js';
-import { taskFixture } from './task-fixture.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { loadTaskCatalog } from '../src/tasks.js';
+import { createTask, loadTaskSnapshot } from '../src/task-api.js';
+import { database } from '../src/task-database.js';
+import { manageTaskList } from '../src/task-lists.js';
+import { mutateTask, setToday } from '../src/task-mutations.js';
+import { temporary } from './helpers.js';
 
-const fixture = readFileSync(new URL('./fixtures/tasks.json', import.meta.url), 'utf8');
-test('tasks snapshot retains source, notes, dates and subtasks; direct entry wins', () => {
-  const tasks = deduplicate(parseSnapshot(fixture));
-  assert.equal(tasks.length, 1);
-  assert.equal(tasks[0].ownerList, 'Work');
-  assert.equal(tasks[0].title, 'Fix calendar sync');
-  assert.equal(tasks[0].subtasks[0].title, 'Check cancelled events');
-  assert.match(tasks[0].description!, /Two subscriptions/);
-  assert.throws(() => parseSnapshot('{"schemaVersion":2,"tasks":[]}'));
-  assert.throws(() => parseSnapshot('not json'));
-});
-test('tasks catalog uses api lists including empty/active lists and preserves Today references', async t => {
-  const { binary, calls } = taskFixture(t);
-  await assert.rejects(loadTasks(binary), /rewrite today.md/);
-  assert.equal(calls().length, 0);
-  const catalog = await loadTaskCatalog(binary, true);
-  assert.equal(catalog.currentList, 'Empty list');
-  assert.deepEqual(catalog.lists, ['Work', 'today', 'Empty list']);
-  assert.equal(catalog.tasks.length, 1);
-  assert.equal(catalog.byList.get('today')![0].ownerList, 'Work');
-  assert.deepEqual(catalog.byList.get('Empty list'), []);
-  assert.deepEqual(calls().at(-1).args, ['api', 'snapshot', '--list', 'Empty list']);
-});
-test('task creation uses latest revision, saves Pending in chosen list, refreshes source', async t => {
-  const { binary, calls } = taskFixture(t);
-  const result = await createTask(binary, { list: 'Empty list', title: ' New task ', description: 'Notes' }, true);
+test('fresh SQLite startup seeds Inbox and empty Today; creation persists without external tools', async t => {
+  const root = temporary(t), catalog = await loadTaskCatalog(root);
+  assert.deepEqual(catalog.lists, ['Inbox', 'today']); assert.equal(catalog.currentList, 'Inbox');
+  assert.deepEqual(catalog.tasks, []); assert.ok(existsSync(join(root, 'tasks.sqlite')));
+  const result = await createTask(root, { list: 'Inbox', title: ' New task ', description: 'Notes\nNext', dueDate: '2026-09-08' });
   assert.equal(result.confirmed, true);
-  assert.deepEqual(calls().map(c => c.args), [['api', 'snapshot', '--list', 'Empty list'], ['api', 'exec'],
-    ['api', 'snapshot', '--list', 'Empty list']]);
-  assert.equal(calls()[1].input.expectedRevision, 'revision-1');
-  assert.deepEqual(calls()[1].input.changes, { title: 'New task', description: 'Notes', completed: false });
-  assert.equal(result.snapshot?.tasks[0].completed, false);
-  assert.equal(result.snapshot?.tasks[0].ownerList, 'Empty list');
+  const task = (await loadTaskCatalog(root)).tasks[0];
+  assert.equal(task.title, 'New task'); assert.equal(task.description, 'Notes\nNext');
+  assert.equal(task.completed, false); assert.equal(task.ownerList, 'Inbox'); assert.deepEqual(task.subtasks, []);
+  assert.equal((await loadTaskSnapshot(root, 'today')).tasks.length, 0);
 });
-test('blank task or missing consent cannot call the task API', async t => {
-  const { binary, calls } = taskFixture(t);
-  await assert.rejects(createTask(binary, { list: 'Work', title: ' ', description: '' }, true), /required/);
-  await assert.rejects(createTask(binary, { list: 'Work', title: 'test', description: '' }), /rewrite today.md/);
-  assert.deepEqual(calls(), []);
+test('catalog matches list snapshots and refreshes edits, renames and Today membership', async t => {
+  const root = temporary(t); manageTaskList(root, 'create', 'Work');
+  await createTask(root, { list: 'Work', title: 'First', description: '' });
+  await createTask(root, { list: 'today', title: 'Second', description: '' });
+  const first = (await loadTaskCatalog(root)).byList.get('Work')![0];
+  await mutateTask(root, first.id, { expected: { title: 'First' }, changes: { title: 'Changed' } });
+  setToday(root, first.id, true); manageTaskList(root, 'rename', 'Work', 'Renamed');
+  const catalog = await loadTaskCatalog(root);
+  for (const list of catalog.lists) assert.deepEqual(catalog.byList.get(list), (await loadTaskSnapshot(root, list)).tasks);
+  assert.equal(catalog.tasks.length, 2);
+  assert.equal(catalog.byList.get('Renamed')![0].title, 'Changed');
+  assert.equal(catalog.byList.has('Work'), false);
+  assert.ok(catalog.tasks.every(task => task.placement === 'direct'));
+  setToday(root, first.id, false);
+  assert.equal((await loadTaskCatalog(root)).byList.get('today')!.length, 1);
 });
-test('revision conflicts refresh source but never retry creation', async t => {
-  const { root, binary, calls } = taskFixture(t);
-  writeFileSync(join(root, 'mode'), 'conflict');
-  const result = await createTask(binary, { list: 'Empty list', title: 'Task', description: '' }, true);
-  assert.equal(result.confirmed, false);
-  assert.match(result.notice, /changed/);
-  assert.deepEqual(result.snapshot?.tasks, []);
-  assert.equal(calls().filter(c => c.args[1] === 'exec').length, 1);
+test('blank creation and missing lists fail without inserting tasks; transactions roll back', async t => {
+  const root = temporary(t);
+  await assert.rejects(createTask(root, { list: 'Inbox', title: ' ', description: '' }), /required/);
+  await loadTaskCatalog(root);
+  await assert.rejects(createTask(root, { list: 'removed', title: 'Task', description: '' }), /removed/);
+  assert.throws(() => database(root, db => { db.prepare('INSERT INTO task_lists(name) VALUES (?)').run('Rollback'); throw new Error('rollback'); }));
+  assert.deepEqual((await loadTaskCatalog(root)).lists, ['Inbox', 'today']);
 });
-for (const mode of ['partial-failure', 'malformed']) test(`task ${mode} exposes uncertain creation without retry`, async t => {
-  const { root, binary, calls } = taskFixture(t);
-  writeFileSync(join(root, 'mode'), mode);
-  const result = await createTask(binary, { list: 'Empty list', title: 'Task', description: '' }, true);
-  assert.equal(result.confirmed, false);
-  assert.match(result.notice, /may have saved/);
-  assert.equal(result.snapshot?.tasks.length, 1);
-  assert.equal(calls().filter(c => c.args[1] === 'exec').length, 1);
+test('catalog reads retain Today membership with canonical task identity and no reset', async t => {
+  const root = temporary(t);
+  await createTask(root, { list: 'today', title: 'Today task', description: '' });
+  const first = await loadTaskCatalog(root), before = readFileSync(join(root, 'tasks.sqlite'));
+  const second = await loadTaskCatalog(root);
+  assert.equal(first.tasks.length, 1); assert.equal(second.byList.get('today')![0].id, first.tasks[0].id);
+  assert.equal(first.tasks[0].ownerList, 'Inbox'); assert.equal(first.byList.get('today')![0].placement, 'reference');
+  assert.deepEqual(readFileSync(join(root, 'tasks.sqlite')), before);
+  database(root, db => db.prepare('DELETE FROM tasks WHERE id = ?').run(first.tasks[0].id));
+  assert.deepEqual((await loadTaskSnapshot(root, 'today')).tasks, []);
 });

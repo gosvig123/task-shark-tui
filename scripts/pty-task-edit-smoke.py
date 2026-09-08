@@ -1,5 +1,4 @@
-"""Task editing uses isolated fake tasks/Pi and a temporary Board root."""
-import json
+"""Task editing uses local SQLite and isolated Pi."""
 from datetime import datetime, timezone
 import re
 import os
@@ -35,8 +34,8 @@ def field(fd, index, value, multiline=False):
     key(fd, '\x15' + value)
 
 
-def mutations(root):
-    return [c for c in creation['calls'](root) if c.get('input') and c['input'].get('operation') == 'task.update']
+def current(root):
+    return next(t for t in creation['state'](root)['byList']['Work'] if t['id'] == 'calendar')
 
 
 def edit(fd, root):
@@ -45,22 +44,22 @@ def edit(fd, root):
     assert all(label in text for label in ['Fix calendar sync', 'Title', 'Due date', 'Notes', '[ Save ]', '[ Cancel ]'])
     key(fd, '\x1b[Z'); assert '▶ [ Cancel ]' in frame(root, 'edit-reverse-tab')
     key(fd, '\t')
-    key(fd, '\x1b'); assert mutations(root) == []
-    open_editor(fd, root); key(fd, '\x13'); assert mutations(root) == []
+    key(fd, '\x1b'); assert current(root)['title'] == 'Fix calendar sync'
+    open_editor(fd, root); key(fd, '\x13'); assert current(root)['title'] == 'Fix calendar sync'
     open_editor(fd, root); field(fd, 0, 'Edited task')
     field(fd, 1, 'Multiline edit\rSecond line', True); field(fd, 2, '2026-02-30')
-    key(fd, '\x13'); assert mutations(root) == []
+    key(fd, '\x13'); assert current(root)['title'] == 'Fix calendar sync'
     assert 'real date' in frame(root, 'edit-invalid-date')
     field(fd, 2, '2027-04-15'); key(fd, '\x13'); drain(fd, .7)
     text = frame(root, 'edit-100-saved')
     assert 'Edited task' in text and 'Multiline edit' in text and '2027-04-15' in text
-    assert len(mutations(root)) == 1
+    assert current(root)['title'] == 'Edited task'
     creation['resize'](fd, 70, 24); drain(fd, .5)
     assert 'Edited task' in frame(root, 'edit-70-saved')
     open_editor(fd, root); field(fd, 1, '', True); field(fd, 2, ''); key(fd, '\x13'); drain(fd, .5)
     text = frame(root, 'edit-70-cleared'); assert 'No notes.' in text and 'No date' in text
     key(fd, '\x1b'); assert 'Edited task' in frame(root, 'edit-back-list')
-    state = json.loads(Path(root, 'state.json').read_text()); assert state['currentList'] == 'Empty list'
+    state = creation['state'](root); assert state['currentList'] == 'Empty list'
 
 
 def cursor_edit(fd, root):
@@ -80,7 +79,7 @@ def cursor_edit(fd, root):
     field(fd, 1, 'First 🦈 line\rSecond café')
     key(fd, '\x01\x1b[1;5Cnew \x05\x7fé')
     frame(root, 'cursor-notes'); key(fd, '\x13'); drain(fd, .5)
-    state = json.loads(Path(root, 'state.json').read_text())
+    state = creation['state'](root)
     task = next(t for t in state['byList']['Work'] if t['id'] == 'calendar')
     assert task['title'] == 'Edited Task!' and task['dueDate'] == '2026-10-15'
     assert task['description'] == 'First 🦈 line\nSecond new café'
@@ -89,17 +88,18 @@ def cursor_edit(fd, root):
 
 
 def conflict(fd, root):
-    before = len(mutations(root))
+    before = current(root)
     key(fd, '\r'); open_editor(fd, root); field(fd, 0, 'Retained conflicted title')
-    Path(root, 'mode').write_text('conflict'); key(fd, '\x13')
+    creation['local']['update'](root, {**before, 'title': 'External edit'})
+    key(fd, '\x13')
     text = frame(root, 'edit-conflict')
     assert 'Retained conflicted title' in text and 'Review latest source' in text
     key(fd, '\x13'); assert 'Retained draft' in frame(root, 'edit-source-review')
     key(fd, DOWN + '\r')
     assert 'Retained conflicted title' in frame(root, 'edit-rebased')
     assert '[ Save ]' in frame(root, 'edit-rebased')
-    key(fd, '\x1b'); Path(root, 'mode').unlink()
-    assert len(mutations(root)) == before + 1
+    key(fd, '\x1b')
+    assert current(root)['title'] == 'External edit'
 
 
 def demo():
@@ -118,26 +118,21 @@ def demo():
 
 def edit_today(fd, root, mode):
     creation['startup'](fd, root)
-    path = Path(root, 'state.json'); state = json.loads(path.read_text())
-    state['byList']['Work'][0]['dueDate'] = ''
-    if mode == 'direct':
-        state['byList']['today'] = [{**state['byList']['Work'][0], 'id': 'direct-today', 'ownerList': 'today', 'placement': 'direct'}]
-    path.write_text(json.dumps(state)); key(fd, 'f'); drain(fd, .5)
+    creation['local']['update'](root, {**current(root), 'dueDate': ''})
+    key(fd, 'f'); drain(fd, .5)
     key(fd, 'l'); key(fd, 'today'); key(fd, '\r'); key(fd, '\r'); open_editor(fd, root)
-    if mode == 'direct':
-        assert 'stored directly in Today' in frame(root, 'today-direct-before-save')
     field(fd, 2, datetime.now(timezone.utc).date().isoformat())
-    if mode == 'remove-conflict': Path(root, 'mode').write_text(mode)
+    if mode == 'remove-conflict':
+        creation['sql'](root, "CREATE TRIGGER refuse_removal BEFORE DELETE ON today BEGIN SELECT RAISE(ABORT, 'blocked'); END")
     key(fd, '\x13'); drain(fd, .7)
     if mode == 'remove-conflict':
         assert 'removal pending' in frame(root, 'today-removal-pending')
-        Path(root, 'mode').unlink(); open_editor(fd, root); key(fd, DOWN + '\r'); drain(fd, .7)
+        creation['sql'](root, 'DROP TRIGGER refuse_removal'); open_editor(fd, root); key(fd, DOWN + '\r'); drain(fd, .7)
     key(fd, '\x1b'); text = frame(root, 'today-back-' + (mode or 'removed'))
-    assert ('No tasks match' in text) == (mode != 'direct')
-    state = json.loads(path.read_text()); assert state['byList']['Work'] and state['currentList'] == 'Empty list'
-    operations = [c['input']['operation'] for c in creation['calls'](root) if c.get('input')]
-    assert operations.count('task.update') == 1 and 'task.delete' not in operations
-    if mode == 'direct': assert 'task.removeFromToday' not in operations
+    assert 'No tasks match' in text
+    state = creation['state'](root)
+    assert state['byList']['Work'] and state['currentList'] == 'Empty list'
+    assert current(root)['dueDate'] == datetime.now(timezone.utc).date().isoformat()
 
 
 def today_case(mode):
@@ -160,8 +155,8 @@ def main():
             os.kill(pid, signal.SIGKILL); os.waitpid(pid, 0); os.close(fd)
             raise
     demo()
-    for mode in ['', 'remove-conflict', 'direct']: today_case(mode)
-    print('Task edit PTY passed: prefill, cancel/noop, invalid date, multiline save, clear, cursor/control editing, Unicode, Today removal/recovery/direct safety, conflict retention, back and resize.')
+    for mode in ['', 'remove-conflict']: today_case(mode)
+    print('Task edit PTY passed: prefill, cancel/noop, invalid date, multiline save, clear, cursor/control editing, Unicode, Today removal/recovery, conflict retention, back and resize.')
 
 
 if __name__ == '__main__':

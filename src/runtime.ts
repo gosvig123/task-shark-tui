@@ -74,6 +74,7 @@ export class Runtime extends EventEmitter {
     if (c.task && wire.type === 'tool_execution_end' && wire.toolName === 'board_post' && wire.isError === false) {
       this.emit('board-post', c.task.id);
     }
+    if (c.task && wire.type === 'tool_execution_end' && wire.toolName === 'task_update' && wire.isError === false) this.emit('task-update', c.task.id);
     if (wire.type === 'extension_ui_request' && wire.timeout) this.expireRequest(c, wire);
     if (wire.type === 'agent_settled') this.settled(c);
     else this.changed(wire.type !== 'message_update' && wire.type !== 'tool_execution_update');
@@ -157,7 +158,7 @@ export class Runtime extends EventEmitter {
     this.changed();
   }
 }
-export function realFactory(binary: string): ClientFactory {
-  return (c, sessions) => c.task ? new AgentBoardRpc(binary, c, sessions) :
+export function realFactory(binary: string, root: string): ClientFactory {
+  return (c, sessions) => c.task ? new AgentBoardRpc(binary, c, sessions, root) :
     new RpcClient(binary, piArguments(c, sessions), c.workspace);
 }

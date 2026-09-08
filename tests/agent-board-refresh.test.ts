@@ -15,16 +15,16 @@ class Client extends EventEmitter {
 const entry: BoardEntry = { schemaVersion: 1, sequence: 1, id: 'entry', requestId: 'request',
   createdAt: '2026-09-07T00:00:00Z', kind: 'progress', body: 'Agent progress', actorKind: 'agent',
   source: 'Pi', threadID: 'thread', sessionID: 'session' };
-test('successful Board post refreshes its attached task, never reviews or refreshes general/error events', async t => {
+for (const tool of ['board_post', 'task_update']) test(`successful ${tool} refreshes its fixed task, never general/error events`, async t => {
   const store = new Store(temporary(t), true), clients = new Map<string, Client>();
   const runtime = new Runtime(store, c => { const client = new Client(); clients.set(c.id, client); return client; });
   const refreshed: string[] = [];
-  runtime.on('board-post', id => refreshed.push(id));
+  runtime.on(tool === 'board_post' ? 'board-post' : 'task-update', id => refreshed.push(id));
   const task = { id: 'a', title: 'A', ownerList: 'Work', completed: false, subtasks: [] };
   const a = store.create('A', store.root, '', task), b = store.create('B', store.root, '', { ...task, id: 'b' });
   const general = store.create('General', store.root, '');
   await Promise.all([a, b, general].map(c => runtime.send(c, 'fixture')));
-  const event = { type: 'tool_execution_end', toolCallId: 'call', toolName: 'board_post', isError: false };
+  const event = { type: 'tool_execution_end', toolCallId: 'call', toolName: tool, isError: false };
   clients.get(a.id)!.emit('event', { ...event, isError: true });
   clients.get(general.id)!.emit('event', event); assert.deepEqual(refreshed, []);
   clients.get(a.id)!.emit('event', event); clients.get(b.id)!.emit('event', event);

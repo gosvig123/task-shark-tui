@@ -34,10 +34,11 @@ function main(): void {
   try {
     const store = new Store(config.root, config.demo);
     const namer = config.demo ? undefined : new ConversationNamer(piTitleGenerator(config.pi, config.namingModel));
-    const runtime = new Runtime(store, config.demo ? () => new DemoClient() : realFactory(config.pi), namer);
+    const runtime = new Runtime(store, config.demo ? () => new DemoClient() : realFactory(config.pi, config.root), namer);
     const view = new View(runtime);
     const shutdown = lifecycle(view, runtime, release);
     bindKeys(view, config, shutdown);
+    runtime.on('task-update', () => { void refreshTasks(view, config); });
     view.render(); void refreshTasks(view, config);
   } catch (error) { release(); throw error; }
 }

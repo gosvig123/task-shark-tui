@@ -9,7 +9,7 @@ export async function refreshTasks(view: View, config: Config, load = loadTaskCa
   const controller = view.refreshAbort = new AbortController();
   try {
     view.notice = 'Loading Task Lists…'; view.render();
-    view.catalog = config.demo ? demoCatalog(view) : await load(config.tasks, true, controller.signal);
+    view.catalog = config.demo ? demoCatalog(view) : await load(config.root, controller.signal);
     if (view.listFilter && !view.catalog.lists.includes(view.listFilter)) view.listFilter = undefined;
     view.navigation?.invalidateLists(view.catalog.lists);
     if (view.workspaceReturn?.listFilter && !view.catalog.lists.includes(view.workspaceReturn.listFilter)) view.workspaceReturn.listFilter = undefined;

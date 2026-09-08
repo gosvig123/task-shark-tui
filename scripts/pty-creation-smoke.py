@@ -1,10 +1,10 @@
-"""Creation and automatic loading checks with isolated task/Pi binaries; never real service writes."""
+"""Creation and automatic loading checks with local SQLite and isolated Pi; never real service writes."""
 import json
 import os
 from pathlib import Path
 import pty
 import runpy
-import shutil
+import subprocess
 import tempfile
 
 smoke = runpy.run_path("scripts/pty-smoke.py")
@@ -13,38 +13,32 @@ key, drain, resize = (smoke[name] for name in ("key", "drain", "resize"))
 ESC, DOWN = "\x1b", "\x1b[B"
 
 
+local = runpy.run_path('scripts/local-task-fixture.py')
+state, sql = local['state'], local['sql']
+
+
 def fixture(root):
-    Path(root, 'helper').mkdir(exist_ok=True)
-    for name in ('cli.mjs', 'store.mjs', 'storage.mjs'):
-        shutil.copyfile('tests/fixtures/fake-board-cli.mjs', Path(root, 'helper', name))
-    tasks = Path(root, "tasks.mjs")
-    shutil.copyfile("tests/fixtures/fake-tasks.mjs", tasks)
-    tasks.chmod(0o700)
-    original = json.loads(Path("tests/fixtures/tasks.json").read_text())["tasks"]
-    Path(root, "state.json").write_text(json.dumps({"revision": 1, "currentList": "Empty list",
-        "byList": {"Work": [original[0]], "today": [original[1]], "Empty list": []}}))
+    subprocess.run(['node', '--import', 'tsx', 'tests/fixtures/local-tasks.ts', root], check=True, capture_output=True)
     pi = Path(root, "pi")
     pi.write_text("#!/usr/bin/env node\nrequire('node:fs').writeFileSync(__dirname+'/pi-pid',String(process.pid));" +
         "import(" + json.dumps(str(Path("tests/fixtures/fake-pi.mjs").resolve())) + ");")
     pi.chmod(0o700)
-    return tasks, pi
+    return pi
 
 
 def start(root):
-    tasks, pi = fixture(root)
+    pi = fixture(root)
     pid, fd = pty.fork()
     if pid == 0:
         os.environ.update(HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo",
-                          TASK_SHARK_TASKS=str(tasks), TASK_SHARK_PI=str(pi), TASKSHARK_BOARD_ROOT=root + '/board',
-                          TASKSHARK_MCP_RESOURCE_DIR=root + '/helper')
+                          TASK_SHARK_PI=str(pi))
         os.execvp("node", ["node", "--import", "tsx", "src/main.ts"])
     resize(fd, 100, 32)
     return pid, fd
 
 
-def calls(root):
-    file = Path(root, "calls.jsonl")
-    return [json.loads(line) for line in file.read_text().splitlines()] if file.exists() else []
+def task_count(root):
+    return sql(root, 'SELECT COUNT(*) FROM tasks')[0][0]
 
 
 def no_conversations(root):
@@ -56,14 +50,8 @@ def no_conversations(root):
 
 def startup(fd, root):
     output = drain(fd, 1)
-    for _ in range(30):
-        if any(c['args'][1] == 'snapshot' for c in calls(root)):
-            break
-        output += drain(fd, .1)
     assert b"Load existing Task Lists?" not in output
-    assert calls(root)[0]["args"] == ["api", "lists"]
-    assert any(c["args"][1] == "snapshot" for c in calls(root))
-    assert all(c["args"][1] != "exec" for c in calls(root))
+    assert Path(root, 'demo', 'tasks.sqlite').exists()
     key(fd, "t")
 
 
@@ -75,9 +63,9 @@ def task_cancellations(fd, root):
             key(fd, step)
         key(fd, ESC)
         no_conversations(root)
-        assert all(c["args"][1] != "exec" for c in calls(root))
+        assert task_count(root) == 1
     key(fd, "n"); drain(fd, 0.5); key(fd, "\r"); key(fd, "   \r")
-    assert all(c["args"][1] != "exec" for c in calls(root))
+    assert task_count(root) == 1
     no_conversations(root)
 
 
@@ -99,21 +87,18 @@ def conversation_cancellations(fd, root):
 def create_task(fd, root):
     key(fd, "t"); key(fd, "n"); drain(fd, 0.5)
     key(fd, "\r"); key(fd, "Created from n\r"); key(fd, "Optional notes\x13")
-    assert all(c["args"][1] != "exec" for c in calls(root))
+    assert task_count(root) == 1
     key(fd, DOWN); key(fd, "\r"); drain(fd, 1)
-    mutations = [c for c in calls(root) if c["args"][1] == "exec"]
-    assert len(mutations) == 1
-    request = mutations[0]["input"]
-    assert request["list"] == "Empty list" and request["expectedRevision"] == "revision-1"
-    assert request["changes"]["completed"] is False
-    state = json.loads(Path(root, "state.json").read_text())
-    assert state["byList"]["Empty list"][0]["title"] == "Created from n"
-    assert state["currentList"] == "Empty list"
+    assert task_count(root) == 2
+    saved = state(root)
+    assert saved['byList']['Empty list'][0]['title'] == 'Created from n'
+    assert saved['byList']['Empty list'][0]['completed'] is False
+    assert saved['currentList'] == 'Empty list'
     no_conversations(root)
 
 
 def create_conversations(fd, root):
-    key(fd, "3")  # Conversations section creates a Task-backed Conversation.
+    key(fd, "2")  # Conversations section creates a Task-backed Conversation.
     smoke["create"](fd)
     smoke["wait_state"](fd, root, lambda rows: len(rows) == 1 and rows[0]["status"] == "Needs Input")
     c = smoke["conversations"](root)[0]
@@ -128,14 +113,14 @@ def create_conversations(fd, root):
 
 def list_filter(fd, root):
     key(fd, "t"); key(fd, "1"); key(fd, "l"); drain(fd, 0.5)
-    key(fd, DOWN); output = key(fd, "\r")
+    key(fd, "Work"); output = key(fd, "\r")
     assert b"Fix calendar" in output and b"sync" in output
     key(fd, "n"); output = drain(fd, 0.5)
     key(fd, "\r"); key(fd, "Work draft\r"); key(fd, "\x13")
     output += drain(fd)
     key(fd, ESC)
-    assert len([c for c in calls(root) if c["args"][1] == "exec"]) == 1
-    assert json.loads(Path(root, "state.json").read_text())["currentList"] == "Empty list"
+    assert task_count(root) == 2
+    assert state(root)["currentList"] == "Empty list"
 
 
 def main():

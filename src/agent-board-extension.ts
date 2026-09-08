@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { taskUpdateSchema } from './task-mutations.js';
 import { type ExtensionAPI, type ToolDefinition, truncateHead } from '@earendil-works/pi-coding-agent';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,6 +8,8 @@ import { AgentBoardHelper } from './agent-board-helper.js';
 import { agentBoardTools, boardReady, boardStatusCommand, readBoardScope } from './agent-board-scope.js';
 
 const definitions: Pick<ToolDefinition, 'name' | 'label' | 'parameters'>[] = [
+  { name: 'task_read', label: 'Read current task', parameters: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'task_update', label: 'Update current task with expected-field conflict checks', parameters: z.toJSONSchema(taskUpdateSchema) },
   { name: 'brief_read', label: 'Task brief', parameters: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'board_read', label: 'Read Board Updates', parameters: { type: 'object', properties: {
     afterSequence: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 100 },
@@ -36,7 +40,8 @@ function register(pi: ExtensionAPI, helper: AgentBoardHelper, definition: typeof
       'Posts use agent attribution and source Pi. Output limited to 50KB/2000 lines; larger results saved privately.',
     async execute(_id, params, signal, _update, ctx) {
       const sessionID = ctx.sessionManager.getSessionId();
-      const value = definition.name === 'brief_read' ? await helper.brief(params, sessionID, signal) :
+      const value = definition.name === 'task_read' ? await helper.taskRead(params, signal) :
+        definition.name === 'task_update' ? await helper.taskUpdate(params, signal) : definition.name === 'brief_read' ? await helper.brief(params, sessionID, signal) :
         definition.name === 'board_read' ? await helper.read(params, sessionID, signal) : await helper.post(params, sessionID, signal);
       return boardResult(value);
     },

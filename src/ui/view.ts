@@ -1,6 +1,8 @@
+import { LocalBoardClient } from '../local-board-client.js';
 import { navigationWidth } from './layout.js';
+import { setListContent } from './list-content.js';
 import { setDetailContent } from './detail-content.js';
-import { allProgress, normalizeBoardSelection } from './board-preview.js';
+import { cacheDetailAttributes } from './detail-attributes.js';
 import { reconcileTasks } from './task-selector.js';
 import { NavigationMemory, restoreScroll } from './navigation-memory.js';
 import { workspacePanels, renderNavigation } from './workspace-navigation.js';
@@ -35,7 +37,6 @@ export class View {
   taskScope?: Task;
   workspaceSection: WorkspaceSection = 'Details';
   workspaceFocus: 'left' | 'right' = 'left';
-  boardSequence: number = allProgress;
   readonly workspacePanels = workspacePanels(this);
   readonly taskSearch = blessed.box({ parent: this.screen, hidden: true, top: 3, left: 1, height: 1, style: { fg: 'default' } });
   workspaceReturn?: WorkspaceReturn;
@@ -54,9 +55,10 @@ export class View {
   follow = true;
   private pendingRender?: NodeJS.Timeout;
   constructor(readonly runtime: Runtime) {
+    cacheDetailAttributes(this.detail);
     this.navigation = new NavigationMemory(runtime.store.root);
     this.notice = this.navigation.preferences?.notice ?? '';
-    this.boards = new Boards(() => this.schedule(), runtime.store.demo);
+    this.boards = new Boards(() => this.schedule(), runtime.store.demo, new LocalBoardClient(runtime.store.root));
     runtime.on('change', () => this.schedule());
     runtime.on('board-post', (id: string) => this.boards.refresh(id));
     this.screen.on('resize', () => this.render());
@@ -78,24 +80,26 @@ export class View {
   private matches(text: string): boolean { return text.toLowerCase().includes(this.query.toLowerCase()); }
   private include(c: Conversation): boolean {
     if (this.tab === Tab.review && c.status !== Status.review) return false;
-    if (this.taskScope && (c.task?.id !== this.taskScope.id || c.task?.ownerList !== this.taskScope.ownerList)) return false;
+    if (this.taskScope && c.task?.id !== this.taskScope.id) return false;
     return this.matches(`${c.title} ${c.workspace} ${c.task?.title ?? ''}`);
   }
-  current(): Row | undefined { const rows = this.rows(); return rows.find(r => r.key === this.selected) ?? rows[0]; }
-  move(delta: number): void {
-    const rows = this.rows();
+  current(): Row | undefined {
+    const rows = this.rows().filter(row => row.conversation);
+    return rows.find(r => r.key === this.selected) ?? rows[0];
+  }
+  move(delta: number, render = true): void {
+    const rows = this.rows().filter(row => row.conversation);
     const index = Math.max(0, rows.findIndex(r => r.key === this.selected));
     this.selected = rows[Math.max(0, Math.min(rows.length - 1, index + delta))]?.key ?? '';
     this.follow = true;
-    this.render();
+    if (render) this.render();
   }
-  switchTab(tab: string): void {
+  switchTab(tab: string, render = true): void {
     this.navigation.tab(this, tab);
-    this.render();
+    if (render) this.render();
   }
   private renderWorkspace(): void {
     if (this.taskScope) this.selected = this.current()?.key ?? '';
-    normalizeBoardSelection(this);
     this.list.hide(); renderNavigation(this);
     this.header.setContent(safe(` TASK SHARK · Task Workspace · c/t/r tabs · ${this.workspaceReturn?.listFilter ?? this.listFilter ?? 'All Lists'}\n ${this.taskScope?.title ?? 'No tasks match'} · ${this.workspaceSection} · ${this.workspaceReturn?.taskFilter ?? this.taskFilter}`));
     setDetailContent(this.detail, this.draft ? safe(`New Conversation · unsaved\nTask: ${this.taskScope?.title ?? 'No tasks match'}\nAgent Workspace: ${this.draft.workspace || 'New private directory (created on send)'}`) : workspaceContent(this));
@@ -113,7 +117,7 @@ export class View {
     if (this.catalog.lists.length && this.listFilter && !this.catalog.lists.includes(this.listFilter)) this.listFilter = undefined;
     const rows = this.rows(), row = this.current();
     this.selected = row?.key ?? '';
-    this.list.setItems(rows.length ? rows.map(r => safe(r.label)) : ['No matching conversations']);
+    setListContent(this.list, rows.length ? rows.map(r => safe(r.label)) : ['No matching conversations']);
     this.list.select(Math.max(0, rows.findIndex(r => r.key === this.selected)));
     const conversations = this.runtime.store.conversations;
     const reviews = conversations.filter(c => c.status === Status.review).length;
@@ -123,7 +127,7 @@ export class View {
       conversationDetails(row.conversation, this.runtime.state(row.conversation), Number(this.detail.width) - 3) : welcome;
     setDetailContent(this.detail, !this.draft && row?.conversation ? detail : safe(detail));
     if (this.follow) this.detail.setScrollPerc(row?.conversation ? 100 : 0);
-    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open/fold · m message · n new\n / search · a reviewed · p pin · ? help · q quit\n ${this.notice}`));
+    this.footer.setContent(safe(this.draft ? ` New Conversation · unsaved · ${this.draft.task ? 'Task: ' + this.draft.task.title : 'General'}\n Ctrl-S send · Ctrl-T task · Ctrl-W workspace · Ctrl-O settings · Esc discard\n ${this.notice}` : ` ↑↓ select · Enter open · m message · n new\n / search · a reviewed · p pin · ? help · q quit\n ${this.notice}`));
     restoreScroll(this); this.screen.render();
   }
   destroy(): void { this.refreshAbort?.abort(); clearTimeout(this.pendingRender); this.screen.destroy(); }

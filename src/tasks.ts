@@ -1,25 +1,34 @@
-import type { Task } from './model.js';
-import { loadLists, loadTaskSnapshot, parseTaskSnapshot } from './task-api.js';
-export { taskConsentFlag, taskSnapshotWarning } from './task-api.js';
+import { taskSchema, type Task } from './model.js';
+import { database } from './task-database.js';
 
-export function parseSnapshot(text: string): Task[] { return parseTaskSnapshot(text).tasks; }
 export function deduplicate(tasks: Task[]): Task[] {
   const items = new Map<string, Task>();
   for (const task of tasks) {
-    const key = `${task.ownerList}\0${task.id}`;
-    if (!items.has(key) || task.placement === 'direct') items.set(key, task);
+    if (!items.has(task.id) || task.placement === 'direct') items.set(task.id, task);
   }
   return [...items.values()].sort((a, b) => a.ownerList.localeCompare(b.ownerList));
 }
 export interface TaskCatalog {
   lists: string[]; currentList: string; tasks: Task[]; byList: Map<string, Task[]>;
 }
-export async function loadTaskCatalog(binary: string, allowed = false, signal?: AbortSignal): Promise<TaskCatalog> {
-  const { lists, currentList } = await loadLists(binary, allowed, signal);
-  const byList = new Map<string, Task[]>();
-  for (const list of lists) byList.set(list, (await loadTaskSnapshot(binary, list, allowed, signal)).tasks);
-  return { lists, currentList, byList, tasks: deduplicate([...byList.values()].flat()) };
+export async function loadTaskCatalog(root: string, signal?: AbortSignal): Promise<TaskCatalog> {
+  signal?.throwIfAborted();
+  return database(root, db => {
+    const rows = db.prepare('SELECT name, active FROM task_lists ORDER BY name').all();
+    const lists = [...rows.map(row => String(row.name)), 'today'];
+    const currentList = String(rows.find(row => row.active === 1)!.name);
+    const byList = new Map<string, Task[]>(lists.map(list => [list, []]));
+    const today = new Set(db.prepare('SELECT task_id FROM today').all().map(row => String(row.task_id)));
+    const tasks = db.prepare('SELECT data FROM tasks ORDER BY rowid').all().map(row => {
+      const task: Task = { ...taskSchema.parse(JSON.parse(String(row.data))), placement: 'direct' };
+      byList.get(task.ownerList)!.push(task);
+      if (today.has(task.id)) byList.get('today')!.push({ ...task, placement: 'reference' });
+      return task;
+    });
+    tasks.sort((a, b) => a.ownerList.localeCompare(b.ownerList));
+    return { lists, currentList, byList, tasks };
+  });
 }
-export async function loadTasks(binary: string, allowed = false, signal?: AbortSignal): Promise<Task[]> {
-  return (await loadTaskCatalog(binary, allowed, signal)).tasks;
+export async function loadTasks(root: string, signal?: AbortSignal): Promise<Task[]> {
+  return (await loadTaskCatalog(root, signal)).tasks;
 }

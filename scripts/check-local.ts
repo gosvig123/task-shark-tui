@@ -2,16 +2,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { configuration } from '../src/config.js';
-import { loadTasks, taskConsentFlag } from '../src/tasks.js';
+import { loadTasks } from '../src/tasks.js';
 import { RpcClient } from '../src/rpc.js';
 
 async function checkLocal(): Promise<void> {
   const config = configuration();
-  if (process.argv.includes(taskConsentFlag)) {
-    const tasks = await loadTasks(config.tasks, true);
-    console.log(`tasks-go: ${tasks.length} tasks (daily reset allowed; task files may have changed).`);
-  } else console.log('Tasks skipped: snapshots may rewrite today.md/reset state. Explicit --allow-task-reset required.');
   const root = mkdtempSync(join(tmpdir(), 'task-shark-handshake-'));
+  console.log(`Local SQLite: ${(await loadTasks(root)).length} tasks in a fresh temporary store.`);
   const client = new RpcClient(config.pi, ['--mode', 'rpc', '--no-extensions', '--no-skills',
     '--no-prompt-templates', '--no-context-files', '--session-dir', root], root);
   client.on('failure', error => console.error(error.message));

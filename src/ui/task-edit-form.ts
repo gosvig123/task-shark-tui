@@ -1,7 +1,6 @@
 import blessed, { type Widgets } from 'blessed';
 import type { Task } from '../model.js';
 import { changesFor, type TaskEdits } from '../task-edit.js';
-import { directTodayNotice, todayList } from '../task-today.js';
 import { CursorEditor, type EditorKey } from './cursor-editor.js';
 import { editorLines } from './cursor-input.js';
 import { safe } from './dialogs.js';
@@ -55,7 +54,7 @@ function draw(form: Form, state: TaskFormState, screen: Widgets.Screen, busy: bo
   const { editor } = state;
   const changed = fields.some((f, i) => state.editors[i].value !== (f === 'dueDate' ? editor.original.dueDate?.slice(0, 10) ?? '' : editor.original[f] ?? ''));
   form.panel.setLabel(` Edit task${changed ? ' · Unsaved changes' : ''} `);
-  form.notice.setContent(safe((busy ? 'Working…' : editor.notice) + (editor.original.ownerList === todayList ? '\n' + directTodayNotice : '')));
+  form.notice.setContent(safe(busy ? 'Working…' : editor.notice));
   const save = editor.blocked ? 'Review latest source' : 'Save';
   form.actions.setContent(`${state.focus === 3 ? '▶' : ' '} [ ${save} ]    ${state.focus === 4 ? '▶' : ' '} [ Cancel ]\nTab / Shift-Tab fields · Ctrl-S ${editor.blocked ? 'review' : 'save'} · Esc cancel\n←/→ cursor · Home/End · Ctrl-W word · Ctrl-U clear all`);
   screen.render();

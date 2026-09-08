@@ -1,7 +1,7 @@
 import { removeTodayReference } from './task-today.js';
-import { randomUUID } from 'node:crypto';
+import { database } from './task-database.js';
 import type { Task } from './model.js';
-import { loadTaskSnapshot, taskCommand, type TaskSnapshot } from './task-api.js';
+import { snapshot, saveTask, type TaskSnapshot } from './task-api.js';
 export const editFields = ['title', 'description', 'dueDate'] as const;
 export type TaskEdits = Record<typeof editFields[number], string>;
 export function editable(task: Task): TaskEdits {
@@ -20,30 +20,23 @@ export function rebaseEdits(original: Task, draft: TaskEdits, current: Task): Ta
   return { ...editable(current), ...changesFor(original, draft) };
 }
 export interface TaskEditResult { saved: boolean; notice: string; snapshot?: TaskSnapshot; blocked?: boolean; todayPending?: boolean; todaySnapshot?: TaskSnapshot }
-export async function updateTask(binary: string, original: Task, draft: TaskEdits, allowed = false): Promise<TaskEditResult> {
+export async function updateTask(root: string, original: Task, draft: TaskEdits): Promise<TaskEditResult> {
   const changes = changesFor(original, draft);
   if (!Object.keys(changes).length) return { saved: true, notice: 'No task changes.' };
-  const before = await loadTaskSnapshot(binary, original.ownerList, allowed);
-  const current = before.tasks.find(t => t.id === original.id && t.ownerList === original.ownerList);
-  if (!current || Object.keys(changes).some(field => editable(current)[field as keyof TaskEdits] !== editable(original)[field as keyof TaskEdits])) {
-    return { saved: false, blocked: true, snapshot: before, notice: 'Task changed externally or was removed. Review the latest source before saving.' };
-  }
-  let result: TaskEditResult;
-  try {
-    const response = JSON.parse(await taskCommand(binary, ['exec'], allowed, undefined, { schemaVersion: 1,
-      requestId: randomUUID(), operation: 'task.update', list: original.ownerList, taskId: original.id,
-      expectedRevision: before.revision, changes }));
-    result = response.success === true ? { saved: true, notice: 'Task saved.' } : { saved: false, blocked: true,
-      notice: response.error?.code === 'revision_conflict' ? 'Revision conflict. Not retried; review the latest source.' :
-        `Save not confirmed: ${response.error?.message ?? 'Invalid response'}. Delivery may be uncertain; check the source before retrying.` };
-  } catch (error) { result = { saved: false, blocked: true, notice: `Delivery uncertain: ${String(error)}. Not retried; check the source.` }; }
-  return finishUpdate(binary, original, changes, result, allowed);
+  const result = database(root, db => {
+    const before = snapshot(db, original.ownerList);
+    const current = before.tasks.find(t => t.id === original.id);
+    if (!current || Object.keys(changes).some(field => editable(current)[field as keyof TaskEdits] !== editable(original)[field as keyof TaskEdits])) {
+      return { saved: false, blocked: true, snapshot: before, notice: 'Task changed externally or was removed. Review the latest source before saving.' };
+    }
+    saveTask(db, { ...current, ...changes });
+    return { saved: true, snapshot: snapshot(db, original.ownerList), notice: 'Task saved.' };
+  });
+  return finishUpdate(root, original, changes, result);
 }
-async function finishUpdate(binary: string, original: Task, changes: Partial<TaskEdits>, result: TaskEditResult, allowed: boolean): Promise<TaskEditResult> {
-  try { result.snapshot = await loadTaskSnapshot(binary, original.ownerList, allowed); }
-  catch (error) { result.notice += ` Source refresh failed: ${String(error)}`; result.blocked = true; result.saved = false; }
+async function finishUpdate(root: string, original: Task, changes: Partial<TaskEdits>, result: TaskEditResult): Promise<TaskEditResult> {
   if (result.saved && 'dueDate' in changes) {
-    const removal = await removeTodayReference(binary, original, allowed);
+    const removal = await removeTodayReference(root, original);
     result.todayPending = !removal.complete; result.notice = removal.notice; result.todaySnapshot = removal.today;
   }
   return result;

@@ -5,7 +5,7 @@ through its remote procedure call (RPC) protocol, with a task-only Board tool ex
 
 ## Run
 
-Requires Node.js 22 or later, npm, and a terminal. Use 100 columns × 30 rows when possible.
+Requires Node.js 22.19 or later, npm, and a terminal. Use 100 columns × 30 rows when possible.
 
 ```sh
 cd task-shark-tui
@@ -17,7 +17,7 @@ ln -s "$PWD/bin/task-shark" "$HOME/.local/bin/task-shark"
 
 With `~/.local/bin` on PATH, run `task-shark` or `task-shark --demo` from any directory. Keep this checkout and its local dependencies in place.
 
-Live mode reads `tasks-go` snapshots and uses your installed Pi, credentials, model
+Live mode uses local SQLite tasks and your installed Pi, credentials, model
 settings, skills, and compatible extensions. Nothing is sent to a model until you
 submit a message. Pi extension startup can have its own side effects.
 
@@ -25,16 +25,20 @@ submit a message. Pi extension startup can have its own side effects.
 approval prompts when a Pi extension requests one; it does not add approval checks
 to every tool. Model calls can cost money.
 
-**Existing Task Lists load automatically at startup.** `tasks-go` lists and snapshots
-can rewrite `today.md` and its daily reset state; the app permits those normal side effects.
-Press `f` to refresh. Task creation still writes to your existing source list only
-after you confirm **Create pending task**. The old `--allow-task-reset` app flag is no longer needed.
+Use `g` (or `l` → Manage Task Lists) to create, rename, set Active, or delete empty non-active lists.
+Use `v` in Task Workspace for completion, subtasks, Today membership, and confirmed task deletion.
+Conversations stay saved when their task is deleted.
+
+**Local Task Lists load automatically at startup.** A fresh store starts with empty
+Inbox (the Active Task List) and Today. No external tasks or widget installation is needed.
+Press `f` to refresh. Creation saves only after you confirm **Create pending task**.
+Today contains source-task references; there is no automatic daily reset.
 Try the offline version first:
 ```sh
 npm run demo
 ```
 
-Demo mode starts neither Pi nor tasks-go. It supplies fixture tasks, an empty list, and a simulated
+Demo mode starts no Pi process. It supplies fixture tasks, an empty list, and a simulated
 agent. Send any message, press `m`, and answer the Pi Request to finish the response.
 Include `input`, `select`, or `editor` in a demo message to try those request types.
 Use `long approval` to try scrollable confirmation details. Demo task creation stays
@@ -48,8 +52,8 @@ in memory until quit; it never writes a task file.
    Confirmation saves a **Pending** task. Choosing a filter does not switch your
    Active Task List. No list is created or deleted.
 3. Tasks opens Task Workspace directly. The inline searchable task selector fills
-   the upper third of the left pane, with Board Updates and Conversations below; one preview/interaction pane is on the right.
-   Use `1`/`2`/`3` or arrows to highlight items without marking them reviewed.
+   the upper half of the left pane, with Conversations below. The right preview shows all Board Updates directly below task details.
+   Use `1`/`2` or arrows to highlight items without marking them reviewed.
    `Enter` opens the preview and focuses right; only conversations are acknowledged on open.
    `Escape` returns focus left. From left navigation it clears search, but keeps the Task List and status filters.
    `/` focuses inline search; typing narrows tasks and updates all panes. Enter or Escape keeps the query and selection.
@@ -84,9 +88,9 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | --- | --- |
 | `c`, `t`, `r` | Conversations, Tasks, For Review Inbox |
 | `↑`, `↓`, `Enter` | Select and open |
-| `1`, `2`, `3`, `↑`, `↓` in Task Workspace | Select left sections/items; arrows scroll when focused right |
+| `1`, `2`, `↑`, `↓` in Task Workspace | Select left sections/items; arrows scroll when focused right |
 | `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left; clear search from left navigation |
-| `n`, `a`, `f` in Board Updates | Post/retry, explicitly review board, refresh shared feed |
+| `u`, `a`, `f` in task preview | Post/retry, explicitly review board, refresh shared feed |
 | `n` | New task in task selector; new conversation in Conversations |
 | `l`, `o` | Choose a Task List (includes empty lists), or task status/due-date filter |
 | `m` | Compose a message, or answer a pending Pi Request |
@@ -112,7 +116,7 @@ No/Yes separately. Task refresh runs in the background, without blocking these c
 ## Storage and integration
 
 The default data directory is `~/.local/share/task-shark-tui`. It holds
-`conversations.json`, `task-preferences.json`, private Agent Workspaces, and Pi session files. Demo storage
+`tasks.sqlite`, `conversations.json`, `task-preferences.json`, private Agent Workspaces, and Pi session files. Demo storage
 lives in its `demo/` subdirectory. No existing Task Shark indexes are read or changed.
 A lock prevents simultaneous app instances from writing the same directory.
 
@@ -129,42 +133,32 @@ not concatenate session branches or rewrite Pi session files.
 | `TASK_SHARK_DATA_DIR` | Alternative data directory; demo adds `/demo` |
 | `TASK_SHARK_PI` | Pi executable path; default searches PATH and `~/.pi/agent/bin/pi` |
 | `TASK_SHARK_NAMING_MODEL` | Conversation title model; default `openai-codex/gpt-5.6-terra` |
-| `TASK_SHARK_TASKS` | tasks-go executable path; default searches PATH and `~/.local/bin/tasks` |
-| `TASKSHARK_MCP_RESOURCE_DIR` | Widget Board helper directory; default `/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP` |
-| `TASKSHARK_BOARD_ROOT` | Shared Board root; default `~/Library/Application Support/TaskShark/SharedTasks/v1` |
 
-Task Lists and Active Task List come from `tasks api lists`; tasks come from
-`tasks api snapshot --list <name>`. This uses tasks-go’s existing storage, normally
-`~/tasks-lists` and `~/.current-tasks-list`. `TASK_SHARK_LISTS_DIR` is no longer used:
-the API catalog is authoritative, not a separate directory of filenames.
-
-Task creation calls `tasks api exec` with `task.create`, the latest snapshot
-revision, and `completed: false`, then refreshes the source list. Conflicts and
-uncertain responses never trigger automatic creation retries. Check the refreshed
-source before creating again: a failed response can follow a successful write.
-Task editing uses `task.update` with the stable ID, source list, and latest revision.
-Only changed fields are sent; blank notes/date clears them. Cancel and unchanged Save do not write.
-Date changes remove Today references, not source tasks. Direct Today tasks stay. Failed removals can be retried with `e` during this launch without resaving the date.
-Conflicts or uncertain delivery retain the draft and require explicit source review before another Save.
-The app does not parse task Markdown or create a second task store. Existing conversation task
-snapshots stay fixed; new conversations use updated details. Demo edits stay in memory.
+Task Lists, tasks, Today references, and Board Updates live in `tasks.sqlite` under
+the data directory. Native Node SQLite transactions serialize local reads and writes.
+No external task/widget data is imported, read, changed, or migrated.
+Task edits compare changed fields with the original draft inside the transaction;
+conflicts keep the draft for explicit source review. Blank notes/date clears them.
+Date changes remove Today references in a separate operation; a failed removal can
+be retried with `e` without resaving the date. Source tasks are preserved.
+Existing conversation task snapshots stay fixed; new conversations use updated details.
+Conversation storage is unchanged. Demo tasks and Board Updates stay in memory.
 This version does not import macOS conversations, manage Ticks, or embed a shell/editor pane.
 
-Board Updates use the installed widget's supported helper, through Node, with the
-same task ID and shared root as the widget. No second board store is created.
-First selecting a task or pressing `f` in Board Updates reads shared history; `n` appends a human
+Board Updates use the local database and source task ID, including Today references.
+First selecting a task or pressing `f` reads all shared history; `u` in task Details appends a human
 Note, Progress, Decision, Blocker, or Handoff. Task-backed Conversations get agent-driven Board tools
 on their next Pi launch; posting is not guaranteed every turn. See [Agent Board integration](docs/agent-board.md). Demo updates stay in memory.
-All progress defaults to all loaded kinds chronologically on the right (latest 100 maximum).
-The left shows All progress, then compact sequence/type rows for individual previews. After opening with `Enter`, `a` reviews **all loaded entries**,
-separately from conversation review; hidden unread entries block review, as in the widget.
-Missing helpers and failed operations appear in the pane, not as an empty successful feed.
-An uncertain post retains its body and request ID for explicit `n` retry without
+All progress shows every update kind chronologically below task details. Earlier pages load automatically.
+There is no separate Board Updates pane or individual update selection. After opening with `Enter`, `a` reviews **all loaded entries**,
+separately from conversation review; hidden unread entries block review, to avoid reviewing unseen content.
+Failed database operations appear in the pane, not as an empty successful feed.
+An uncertain post retains its body and request ID for explicit `u` retry without
 creating duplicates. This retained submission is in memory only: quitting warns you
 to check shared history before posting again after restart. There is no automatic retry.
 
 If tasks fail to load, conversations still work; the footer shows the error. Check
-the executable and tasks-go configuration, then press `f`. Missing model credentials and failed
+the data directory permissions and available disk space, then press `f`. Missing model credentials and failed
 runs appear as Needs Input. Check your Pi setup, then send another message.
 A missing saved session is reported rather than replaced with an empty history.
 For a stale lock after a crash, confirm that no app uses the directory, then remove
@@ -182,17 +176,16 @@ npm run check:board # isolated installed-Pi tool discovery; no model call
 
 Tests use fake subprocesses and temporary storage. The pseudo-terminal (PTY) smoke
 check and file-limit check require Python 3; it drives the real interface in demo mode, including
-concurrent requests, long approvals at 100×32 and 60×20, Unicode titles, delayed
-refresh, resize, restart, quit, signal cleanup, automatic startup task loading, empty lists,
+concurrent requests, long approvals at 100×32 and 60×20, Unicode titles, refresh, resize, restart, quit, signal cleanup, automatic startup task loading, empty lists,
 every creation cancellation step, blank submissions, and successful `n` flows.
-No model calls or real task changes occur. Installed tasks-go creation, conflict, and reset tests use a temporary home and
-skip if that binary is absent. Source files stay within 200 lines and functions within 25.
+No model calls or real task changes occur. Temporary-database tests cover fresh
+startup, creation, conflicting edits, Today reference removal/recovery, rollback,
+Board paging/review, concurrent posts, retry deduplication, and fixed attribution.
+Source files stay within 200 lines and functions within 25.
 
-`npm run check:local` is an optional installed-service check. It skips tasks by
-default and asks Pi only for state/history in a temporary empty session, with
-extensions and context loading disabled. It sends no prompt. Adding
-`-- --allow-task-reset` enables task snapshots and permits their daily reset writes.
-Use an isolated tasks-go home for that check, not real Task Lists.
+`npm run check:local` checks a fresh temporary SQLite store and asks installed Pi
+only for state/history in a temporary empty session. Extensions and context loading
+are disabled. It sends no prompt and does not load real task data.
 
 `npm run check:resume` checks installed Pi against a temporary version-3 JSONL
 session with a branch. It verifies active history and runs only `pwd -P` through

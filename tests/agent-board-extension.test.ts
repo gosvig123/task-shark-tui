@@ -6,11 +6,9 @@ import { randomUUID } from 'node:crypto';
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import agentBoardExtension from '../src/agent-board-extension.js';
 import { boardFixture } from './agent-board-fixture.js';
-const installed = existsSync('/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP/cli.mjs');
 function harness(t: import('node:test').TestContext, collisions: string[] = []) {
   const f = boardFixture(t), saved = { ...process.env }, tools: ToolDefinition[] = [];
-  Object.assign(process.env, f.env, { TASKSHARK_TASK_ID: 'a', TASKSHARK_THREAD_ID: 'thread-a',
-    TASKSHARK_BOARD_HELPER: join(f.resources, 'cli.mjs') });
+  Object.assign(process.env, f.env, { TASKSHARK_TASK_ID: 'a', TASKSHARK_THREAD_ID: 'thread-a' });
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); });
   let start: () => void = () => {}, ready = false;
   const pi = { on: (_event: string, handler: () => void) => { start = handler; },
@@ -22,9 +20,9 @@ function harness(t: import('node:test').TestContext, collisions: string[] = []) 
     { sessionManager: { getSessionId: () => 'actual-session' } } as unknown as ExtensionContext);
   return { ...f, tools, start: () => start(), ready: () => ready, execute };
 }
-test('extension exposes only Board contract, uses actual session and ignores later environment changes', { skip: !installed }, async t => {
+test('extension exposes only Board contract, uses actual session and ignores later environment changes', async t => {
   const f = harness(t); f.start(); assert.equal(f.ready(), true);
-  assert.deepEqual(f.tools.map(tool => tool.name), ['brief_read', 'board_read', 'board_post']);
+  assert.deepEqual(f.tools.map(tool => tool.name), ['task_read', 'task_update', 'brief_read', 'board_read', 'board_post']);
   process.env.TASKSHARK_TASK_ID = 'other'; process.env.TASKSHARK_THREAD_ID = 'other-thread';
   await f.execute('brief_read', {});
   await f.execute('board_post', { requestId: randomUUID(), kind: 'decision', body: 'Fixed scope' });
@@ -34,15 +32,14 @@ test('extension exposes only Board contract, uses actual session and ignores lat
   assert.match((await f.execute('board_read', {})).content[0].type, /text/);
   await assert.rejects(f.execute('board_post', { requestId: randomUUID(), kind: 'note', body: 'bad', actorKind: 'human' }));
 });
-test('extension refuses ambient Board tool collision without replacing or adding any tools', { skip: !installed }, t => {
+test('extension refuses ambient Board tool collision without replacing or adding any tools', t => {
   const f = harness(t, ['board_post']);
   assert.throws(() => f.start(), /collision.*board_post.*ambient-extension/);
   assert.equal(f.tools.length, 0); assert.equal(f.ready(), false); assert.equal(existsSync(f.root), false);
 });
-test('extension reports failed and malformed helper results as failed tool execution', { skip: !installed }, async t => {
+test('extension reports local database failures as failed tool execution', async t => {
   const f = harness(t); f.start();
-  writeFileSync(join(f.resources, 'cli.mjs'), 'process.stderr.write("broken fixture"); process.exit(1);');
-  await assert.rejects(f.execute('brief_read', {}), /broken fixture.*TASKSHARK_MCP_RESOURCE_DIR/);
-  writeFileSync(join(f.resources, 'cli.mjs'), 'console.log("{}");');
+  const { mkdirSync } = await import('node:fs');
+  mkdirSync(f.root); writeFileSync(join(f.root, 'tasks.sqlite'), 'broken database');
   await assert.rejects(f.execute('board_post', { requestId: randomUUID(), kind: 'progress', body: 'Retained' }));
 });

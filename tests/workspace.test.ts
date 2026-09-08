@@ -7,6 +7,7 @@ import { conversationSchema, liveState } from '../src/model.js';
 import { NavigationMemory } from '../src/ui/navigation-memory.js';
 import { Boards } from '../src/board-state.js';
 import { safe } from '../src/ui/dialogs.js';
+import { navigationLabel } from '../src/ui/workspace-navigation.js';
 function fixture() {
   const task = { id: 'task', title: 'Task', completed: false, ownerList: 'Source', subtasks: [] };
   const view = { navigation: new NavigationMemory(), tab: 'Tasks', selected: 'Source/task', query: 'Task', follow: false,
@@ -15,6 +16,28 @@ function fixture() {
     current: () => undefined, rows: () => [], detail: { width: 100, childBase: 0 }, workspaceSection: 'Details' } as unknown as View;
   return { task, view };
 }
+test('conversation label counts only the selected task, separate from its shortcut', () => {
+  const { task, view } = fixture();
+  const other = { ...task, id: 'other' };
+  const conversation = (id: string, attached?: typeof task) => conversationSchema.parse({
+    id, title: 'Conversation', workspace: '/tmp', demo: true, updatedAt: '', task: attached, status: 'Finished', messages: [],
+  });
+  view.runtime.store.conversations.push(
+    conversation('5fc9504d-9f3c-411c-bd18-a594e6cc23f3', task),
+    conversation('5fc9504d-9f3c-411c-bd18-a594e6cc23f4', other),
+    conversation('5fc9504d-9f3c-411c-bd18-a594e6cc23f5', other),
+    conversation('5fc9504d-9f3c-411c-bd18-a594e6cc23f6'),
+  );
+  assert.match(navigationLabel(view, 'Conversations'), /\[2\] Conversations \(0\)/);
+  view.taskScope = task;
+  assert.match(navigationLabel(view, 'Conversations'), /\[2\] Conversations \(1\)/);
+  view.query = 'no search matches';
+  assert.match(navigationLabel(view, 'Conversations'), /Conversations \(1\)/);
+  view.taskScope = other;
+  assert.match(navigationLabel(view, 'Conversations'), /Conversations \(2\)/);
+  view.runtime.store.conversations.pop(); view.runtime.store.conversations.pop();
+  assert.match(navigationLabel(view, 'Conversations'), /Conversations \(1\)/);
+});
 test('opening a task keeps selector selection and filters across Service Tabs', () => {
   const { task, view } = fixture();
   assert.equal(view.taskScope, undefined);
@@ -28,8 +51,8 @@ test('opening a task keeps selector selection and filters across Service Tabs', 
 test('workspace keys keep board review separate and preserve literal untrusted content', async () => {
   const { task, view } = fixture(); openWorkspace(view, task);
   await view.boards.post(task.id, 'note', 'Literal {red-fg}markup{/red-fg}\x1b[90m');
-  await workspaceKey(view, '2');
-  assert.equal(view.workspaceSection, 'Board Updates');
+  await workspaceKey(view, '1');
+  assert.equal(view.workspaceSection, 'Details');
   const content = workspaceContent(view);
   assert.match(content, /Literal \{red-fg\}markup/); assert.doesNotMatch(content, /\x1b\[90m/);
   assert.match(safe(content), /NEW/); assert.equal(view.boards.state(task.id).reviewed, 0);
@@ -38,7 +61,7 @@ test('workspace keys keep board review separate and preserve literal untrusted c
   assert.equal(view.workspaceFocus, 'right');
   await workspaceKey(view, 'a'); assert.equal(view.boards.state(task.id).reviewed, 1);
   await workspaceKey(view, 'escape'); assert.equal(view.workspaceFocus, 'left'); assert.equal(view.taskScope, task);
-  await workspaceKey(view, '3'); assert.match(workspaceContent(view), /No conversations/);
+  await workspaceKey(view, '2'); assert.match(workspaceContent(view), /No conversations/);
   workspaceSection(view, 'Details'); assert.equal(await workspaceKey(view, 'i'), false);
   assert.equal(await workspaceKey(view, 'm'), true);
   await workspaceKey(view, 'escape'); assert.equal(view.taskScope, task);
@@ -52,7 +75,7 @@ test('highlighting a conversation previews without review; Enter opens and Escap
   view.runtime.state = () => liveState();
   let acknowledged = 0;
   view.runtime.acknowledge = () => { acknowledged++; };
-  openWorkspace(view, task); await workspaceKey(view, '3');
+  openWorkspace(view, task); await workspaceKey(view, '2');
   assert.match(workspaceContent(view), /Reply body/); assert.equal(acknowledged, 0);
   assert.equal(await workspaceKey(view, 'm'), true); assert.equal(view.workspaceFocus, 'left');
   await workspaceKey(view, 'enter'); assert.equal(acknowledged, 1); assert.equal(view.workspaceFocus, 'right');
@@ -61,16 +84,14 @@ test('highlighting a conversation previews without review; Enter opens and Escap
   await workspaceKey(view, 'escape'); assert.equal(view.workspaceFocus, 'left'); assert.equal(view.taskScope, task);
   await workspaceKey(view, 'escape'); assert.equal(view.taskScope, task); assert.equal(view.workspaceReturn?.query, '');
 });
-test('arrows cross stacked sections and select individual board entries without review', async () => {
+test('arrows move directly from tasks to conversations without reviewing updates', async () => {
   const { task, view } = fixture(); openWorkspace(view, task);
   await view.boards.post(task.id, 'note', 'First body'); await view.boards.post(task.id, 'decision', 'Second body');
-  await workspaceKey(view, 'down'); assert.equal(view.workspaceSection, 'Board Updates');
   assert.match(workspaceContent(view), /First body/);
   assert.match(workspaceContent(view), /Second body/);
-  await workspaceKey(view, 'down'); assert.match(workspaceContent(view), /First body/);
-  assert.doesNotMatch(workspaceContent(view), /Second body/);
-  await workspaceKey(view, 'down'); assert.match(workspaceContent(view), /Second body/);
-  assert.doesNotMatch(workspaceContent(view), /First body/);
   await workspaceKey(view, 'down'); assert.equal(view.workspaceSection, 'Conversations');
+  await workspaceKey(view, 'up'); assert.equal(view.workspaceSection, 'Details');
+  assert.match(workspaceContent(view), /First body/);
+  assert.match(workspaceContent(view), /Second body/);
   assert.equal(view.boards.state(task.id).reviewed, 0);
 });

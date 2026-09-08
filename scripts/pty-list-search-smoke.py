@@ -1,6 +1,4 @@
-"""Source-list search uses only isolated fake tasks and Pi binaries."""
-import json
-from pathlib import Path
+"""Source-list search uses only local SQLite and isolated Pi."""
 import runpy
 import tempfile
 
@@ -16,14 +14,14 @@ def search_cancel(fd, root):
     key(fd, '\r')  # No match must not advance to title or select an old row.
     output = key(fd, '\x15')
     assert b'Empty list' in output
-    key(fd, 'Worx'); key(fd, '\x7f')
-    key(fd, '\r')
-    key(fd, 'Cancelled searched task\r')
-    output = key(fd, '\x13')
+    output = key(fd, 'Worx') + key(fd, '\x7f')
+    output += key(fd, '\r')
+    output += key(fd, 'Cancelled searched task\r')
+    output += key(fd, '\x13')
     assert b'Work' in output
     key(fd, ESC)
     key(fd, 'n'); drain(fd, 0.5); key(fd, 'zzzz'); key(fd, ESC)
-    assert all(c['args'][1] != 'exec' for c in creation['calls'](root))
+    assert creation['task_count'](root) == 1
     creation['no_conversations'](root)
 
 
@@ -32,10 +30,8 @@ def search_create(fd, root):
     key(fd, 'WORK'); key(fd, DOWN); key(fd, '\r')
     key(fd, 'Search-selected task\r'); key(fd, '\x13')
     key(fd, DOWN); key(fd, '\r'); drain(fd, 1)
-    mutations = [c for c in creation['calls'](root) if c['args'][1] == 'exec']
-    assert len(mutations) == 1
-    assert mutations[0]['input']['list'] == 'Work'
-    state = json.loads(Path(root, 'state.json').read_text())
+    assert creation['task_count'](root) == 2
+    state = creation['state'](root)
     assert state['byList']['Work'][-1]['title'] == 'Search-selected task'
     assert state['byList']['Empty list'] == []
     assert state['currentList'] == 'Empty list'

@@ -35,10 +35,10 @@ for (const cancel of [true, false]) test(`message-editor: inline live transcript
     assert.equal(screen.listeners('resize').length, listeners); assert.equal(panel.detached, true);
   } finally { close(); }
 });
-test('Task Workspace layout: wider selection column and 50/25/25 split with short-window minimums', () => {
+test('Task Workspace layout: wider selection column and two equal panels at all window sizes', () => {
   assert.equal(taskNavigationWidth(100), 40); assert.equal(taskNavigationWidth(200), 80);
-  assert.deepEqual(taskNavigationHeights(28), [14, 7, 7]);
-  assert.deepEqual(taskNavigationHeights(10), [4, 3, 3]);
+  assert.deepEqual(taskNavigationHeights(28), [14, 14]);
+  assert.deepEqual(taskNavigationHeights(10), [5, 5]);
   for (const height of [0, 3, 6, 9, 11, 27, 55]) {
     const sizes = taskNavigationHeights(height);
     assert.equal(sizes.reduce((a, b) => a + b, 0), height); assert.ok(sizes.every(n => n >= 0));

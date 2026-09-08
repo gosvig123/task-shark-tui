@@ -1,4 +1,3 @@
-import { allProgress } from './board-preview.js';
 import { TaskPreferences } from './task-preferences.js';
 import type { View } from './view.js';
 import type { Task } from '../model.js';
@@ -8,17 +7,17 @@ import type { WorkspaceSection } from './workspace.js';
 const tasksTab = 'Tasks';
 export interface NavigationSnapshot {
   tab: string; query: string; selected: string; listFilter?: string; taskFilter: TaskFilterValue;
-  follow: boolean; scroll: number; section: WorkspaceSection; boardSequence?: number;
+  follow: boolean; scroll: number; section: WorkspaceSection;
 }
 export function snapshot(view: View): NavigationSnapshot {
   return { tab: view.tab, query: view.query, selected: view.selected, listFilter: view.listFilter,
     taskFilter: view.taskFilter, follow: view.follow, scroll: view.detail.childBase,
-    section: view.workspaceSection, boardSequence: view.boardSequence };
+    section: view.workspaceSection };
 }
 export function restore(view: View, value: NavigationSnapshot): void {
   Object.assign(view, { tab: value.tab, query: value.query, selected: value.selected, listFilter: value.listFilter,
     taskFilter: value.taskFilter, follow: value.follow, workspaceSection: value.section,
-    boardSequence: value.boardSequence ?? allProgress, workspaceFocus: 'left', pendingScroll: value.scroll });
+    workspaceFocus: 'left', pendingScroll: value.scroll });
 }
 export function taskKey(task: Task): string { return JSON.stringify([task.ownerList, task.id]); }
 export class NavigationMemory {

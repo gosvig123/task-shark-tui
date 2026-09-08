@@ -42,31 +42,24 @@ def long_approvals(root):
 
 
 def fixture_binaries(root):
-    lists = Path(root, "lists"); lists.mkdir()
-    (lists / "Work.md").write_text("Not parsed")
-    tasks = Path(root, "tasks")
-    tasks.write_text("#!/usr/bin/env node\n" +
-                     "require('node:fs').appendFileSync(__dirname+'/task-calls','call\\n');" +
-                     "setTimeout(()=>console.log(JSON.stringify({schemaVersion:1,revision:'fixture',currentList:'Work',lists:['Work'],tasks:[]})),14000);")
     pi = Path(root, "pi")
     pi.write_text("#!/usr/bin/env node\nrequire('node:fs').writeFileSync(__dirname+'/pi-pid',String(process.pid));" +
                   "import(" + json.dumps(str(Path("tests/fixtures/fake-pi.mjs").resolve())) + ");")
-    tasks.chmod(0o700); pi.chmod(0o700)
-    return {"TASK_SHARK_TASKS": str(tasks), "TASK_SHARK_PI": str(pi), "TASK_SHARK_LISTS_DIR": str(lists)}
+    pi.chmod(0o700)
+    return {"TASK_SHARK_PI": str(pi)}
 
 
 def start_live(root):
     environment = fixture_binaries(root)
     pid, fd = pty.fork()
     if pid == 0:
-        os.environ.update(environment, HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo",
-                          TASKSHARK_BOARD_ROOT=root + '/board', TASKSHARK_MCP_RESOURCE_DIR=root + '/absent-helper')
-        os.execvp("node", ["node", "--import", "tsx", "src/main.ts", "--allow-task-reset"])
+        os.environ.update(environment, HOME=root, TERM="xterm-256color", TASK_SHARK_DATA_DIR=root + "/demo")
+        os.execvp("node", ["node", "--import", "tsx", "src/main.ts"])
     resize(fd, 100, 32)
     return pid, fd
 
 
-def slow_refresh(root):
+def local_refresh(root):
     pid, fd = start_live(root)
     try:
         drain(fd, 1)
@@ -74,7 +67,7 @@ def slow_refresh(root):
         output = key(fd, "t")
         assert b"Tasks" in output
         key(fd, "c")
-        smoke["create"](fd, True, "Slow refresh fixture")
+        smoke["create"](fd, True, "Local refresh fixture")
         wait_state(fd, root, lambda rows: rows and rows[0]["status"] == "Needs Input")
         key(fd, "m"); key(fd, "\r")
         wait_state(fd, root, lambda rows: rows[0]["status"] == "For Review")
@@ -82,7 +75,7 @@ def slow_refresh(root):
         wait_state(fd, root, lambda rows: rows[0]["status"] == "Needs Input")
         key(fd, "x"); key(fd, "\x1b[B"); key(fd, "\r")
         wait_state(fd, root, lambda rows: "stopped" in rows[0].get("error", ""))
-        assert Path(root, "task-calls").read_text() == "call\n"
+        assert Path(root, "demo", "tasks.sqlite").exists()
         stop(pid, fd)
     except BaseException:
         cleanup(pid, root)
@@ -134,11 +127,11 @@ def main():
     with tempfile.TemporaryDirectory(prefix="task-shark-approval-") as root:
         long_approvals(root)
     with tempfile.TemporaryDirectory(prefix="task-shark-refresh-") as root:
-        slow_refresh(root)
+        local_refresh(root)
     for exit_signal in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
         with tempfile.TemporaryDirectory(prefix="task-shark-signal-") as root:
             signal_shutdown(root, exit_signal)
-    print("Review PTY passed: long approvals at 100x32/60x20, Unicode title, slow-refresh navigation/input/stop/quit, single load guard, TERM/HUP/INT cleanup.")
+    print("Review PTY passed: long approvals at 100x32/60x20, Unicode title, local-refresh navigation/input/stop/quit, TERM/HUP/INT cleanup.")
 
 
 if __name__ == "__main__":

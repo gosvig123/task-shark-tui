@@ -3,9 +3,19 @@ import ast
 from pathlib import Path
 
 EXCLUDED = {".git", "node_modules", "__pycache__", "dist"}
+# Archify output and browser evidence are generated; keep the source JSON checked.
+GENERATED = {Path('docs/task-shark-architecture.html'), Path('docs/task-shark-architecture.visual-check.json')}
 files = [p for p in Path(".").rglob("*") if p.is_file() and not EXCLUDED.intersection(p.parts)]
 for path in files:
-    text = path.read_text()
+    if path in GENERATED:
+        continue
+    data = path.read_bytes()
+    if data.startswith((b'\x89PNG\r\n\x1a\n', b'GIF87a', b'GIF89a', b'\xff\xd8\xff')):
+        continue
+    try:
+        text = data.decode('utf-8')
+    except UnicodeDecodeError as error:
+        raise ValueError(f'{path}: unexpected non-UTF-8 text') from error
     assert len(text.splitlines()) <= 200, f"{path}: exceeds 200 lines"
     if path.suffix != ".py":
         continue

@@ -1,4 +1,4 @@
-"""Empty inline draft checks; fake tasks/Pi only, isolated HOME."""
+"""Empty inline draft checks; local SQLite and fake Pi only, isolated HOME."""
 import runpy
 import tempfile
 from pathlib import Path

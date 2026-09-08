@@ -7,7 +7,6 @@ import { realFactory } from '../src/runtime.js';
 import { piArguments } from '../src/pi-launch.js';
 import { boardFixture } from './agent-board-fixture.js';
 import { boardExtension } from '../src/agent-board-scope.js';
-const installed = existsSync('/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP/cli.mjs');
 function setEnvironment(t: import('node:test').TestContext, values: NodeJS.ProcessEnv): void {
   const saved = { ...process.env };
   Object.assign(process.env, values);
@@ -15,14 +14,14 @@ function setEnvironment(t: import('node:test').TestContext, values: NodeJS.Proce
     if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key];
   } });
 }
-test('real launch factory isolates concurrent tasks and general RPC env, including resumed snapshot', { skip: !installed }, async t => {
+test('real launch factory isolates concurrent tasks and general RPC env, including resumed snapshot', async t => {
   const f = boardFixture(t); setEnvironment(t, f.env);
   const binary = join(f.home, 'pi'); cpSync(resolve('tests/fixtures/fake-board-pi.mjs'), binary); chmodSync(binary, 0o700);
   const store = new Store(join(f.home, 'app'), false), task = { id: 'task-a', title: 'A', ownerList: 'Work', completed: false, subtasks: [] };
   const a = store.create('A chat', f.home, '', task), b = store.create('B chat', f.home, '', { ...task, id: 'task-b' });
   const general = store.create('General', f.home, '');
   a.sessionFile = join(f.home, 'saved.jsonl'); writeFileSync(a.sessionFile, '');
-  const conversations = [a, b, general], clients = conversations.map(c => realFactory(binary)(c, store.sessions(c)));
+  const conversations = [a, b, general], clients = conversations.map(c => realFactory(binary, f.root)(c, store.sessions(c)));
   clients.forEach(client => client.on('failure', () => {}));
   try {
     const results = await Promise.all(clients.map(client => client.request('prompt', { message: 'not a model call' })));
@@ -39,12 +38,12 @@ function checkCapture(capture: any, c: import('../src/model.js').Conversation, s
     assert.equal(capture.env.TASKSHARK_ACTOR_SOURCE, undefined);
   } else assert.equal(Object.keys(capture.env).some(key => key.startsWith('TASKSHARK_')), false);
 }
-test('readiness rejection occurs before prompt delivery and leaves the transport usable', { skip: !installed }, async t => {
+test('readiness rejection occurs before prompt delivery and leaves the transport usable', async t => {
   const f = boardFixture(t); setEnvironment(t, f.env);
   const binary = join(f.home, 'pi'); cpSync(resolve('tests/fixtures/fake-board-pi.mjs'), binary); chmodSync(binary, 0o700);
   const store = new Store(join(f.home, 'app'), false);
   const c = store.create('Task', f.home, '', { id: 'a', title: 'A', ownerList: 'Work', completed: false, subtasks: [] });
-  const client = realFactory(binary)(c, store.sessions(c)); client.on('failure', () => {});
+  const client = realFactory(binary, f.root)(c, store.sessions(c)); client.on('failure', () => {});
   writeFileSync(join(f.home, 'disable-board'), '');
   try {
     await assert.rejects(client.request('prompt', { message: 'retained' }), /Board tools unavailable/);

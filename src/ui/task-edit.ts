@@ -18,7 +18,7 @@ export function replaceCatalogTask(view: View, task: Task): void {
 }
 async function latest(view: View, config: Config, task: Task): Promise<Task> {
   if (config.demo) return structuredClone(task);
-  const snapshot = await loadTaskSnapshot(config.tasks, task.ownerList, true);
+  const snapshot = await loadTaskSnapshot(config.root, task.ownerList);
   const current = snapshot.tasks.find(t => t.id === task.id && t.ownerList === task.ownerList);
   if (!current) throw new Error('Task no longer exists in its source list.');
   return current;
@@ -45,7 +45,7 @@ async function save(view: View, config: Config, editor: Editor): Promise<boolean
   const changes = changesFor(editor.original, editor.draft);
   if (!Object.keys(changes).length) { replaceCatalogTask(view, editor.original); view.notice = 'No task changes. Nothing written.'; return true; }
   const result = config.demo ? { saved: true, notice: 'Demo task updated in memory.',
-    snapshot: { tasks: [{ ...editor.original, ...changes }] } } : await updateTask(config.tasks, editor.original, editor.draft, true);
+    snapshot: { tasks: [{ ...editor.original, ...changes }] } } : await updateTask(config.root, editor.original, editor.draft);
   editor.notice = result.notice; editor.blocked = !result.saved;
   if (!result.saved) return false;
   const task = result.snapshot?.tasks.find(t => t.id === editor.original.id && t.ownerList === editor.original.ownerList);

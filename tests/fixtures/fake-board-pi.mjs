@@ -10,7 +10,7 @@ createInterface({ input: process.stdin }).on('line', line => {
   if (wire.type === 'get_commands') data = { commands: existsSync(join(process.env.HOME, 'disable-board')) ? [] : [{
     name: 'taskshark-board-status', path: extension,
     description: JSON.stringify({ taskID: process.env.TASKSHARK_TASK_ID, threadID: process.env.TASKSHARK_THREAD_ID,
-      tools: ['brief_read', 'board_read', 'board_post'] }),
+      tools: ['brief_read', 'board_read', 'board_post', 'task_read', 'task_update'] }),
   }] };
   if (wire.type === 'prompt') data = { messages: [{ role: 'assistant', content: JSON.stringify({
     env: process.env, args: process.argv.slice(2), prompt: wire.message,

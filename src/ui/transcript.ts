@@ -5,6 +5,7 @@ import type { TUI } from '@earendil-works/pi-tui';
 import type { Conversation, LiveState, TranscriptMessage } from '../model.js';
 import { contentText, type PiMessage, type Content } from '../wire.js';
 import { safe } from './dialogs.js';
+import { cachedMessage } from './transcript-cache.js';
 
 initTheme('dark', false);
 const factories = { read: createReadToolDefinition, bash: createBashToolDefinition, edit: createEditToolDefinition,
@@ -66,11 +67,15 @@ export function transcript(c: Conversation, live: LiveState, width: number): str
     if (block.type === 'toolCall' && block.id) calls.set(block.id, clean(block));
   }
   const results = new Set(messages.filter(m => m.pi?.role === 'toolResult').map(m => m.pi?.toolCallId));
-  const lines = messages.flatMap(m => renderMessage(m, width, cwd, calls, m.pi === partial));
+  const lines = messages.map(m => {
+    const pending = !!partial && m.pi === partial;
+    const render = () => rendererOutput(renderMessage(m, width, cwd, calls, pending).join('\n'));
+    return pending ? render() : cachedMessage(m, width, cwd, calls.get(m.pi?.toolCallId ?? ''), render);
+  });
   for (const [id, call] of calls) if (!results.has(id) && !live.tools.has(id)) {
-    lines.push(...tool({ role: 'toolResult' }, call, width, cwd, true));
+    lines.push(rendererOutput(tool({ role: 'toolResult' }, call, width, cwd, true).join('\n')));
   }
-  for (const pi of live.tools.values()) lines.push(...tool(clean(pi), calls.get(pi.toolCallId ?? ''), width, cwd, true));
+  for (const pi of live.tools.values()) lines.push(rendererOutput(tool(clean(pi), calls.get(pi.toolCallId ?? ''), width, cwd, true).join('\n')));
   for (const text of live.activity.values()) lines.push(safe(text));
-  return rendererOutput(lines.join('\n'));
+  return lines.join('\n');
 }

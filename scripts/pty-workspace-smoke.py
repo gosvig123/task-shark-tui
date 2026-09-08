@@ -29,9 +29,9 @@ def frame(root, name):
 
 
 def board(fd, root):
-    key(fd, '2')
+    key(fd, '1')
     assert 'No Board Updates' in frame(root, 'empty')
-    key(fd, 'n'); key(fd, '\r')
+    key(fd, 'u'); key(fd, '\r')
     key(fd, 'Readable {red-fg}literal{/red-fg} update\rSecond line for review.\x13')
     drain(fd, .5)
     text = frame(root, '100-board')
@@ -40,45 +40,37 @@ def board(fd, root):
     key(fd, '\r'); assert '1 unread' in frame(root, 'opened-not-reviewed')
     key(fd, 'a')
     assert '0 unread' in frame(root, 'reviewed')
-    key(fd, '2'); key(fd, 'n'); key(fd, '\x1b[B\r'); key(fd, 'Progress body\x13'); drain(fd, .5)
+    key(fd, '1'); key(fd, 'u'); key(fd, '\x1b[B\r'); key(fd, 'Progress body\x13'); drain(fd, .5)
     aggregate(fd, root, '100')
     resize(fd, 70, 24); drain(fd, .5)
     aggregate(fd, root, '70')
     text = frame(root, '70-board')
-    assert all(label in text for label in ['1 Tasks', '2 Board Updates', '3 Conversations', 'Readable'])
+    assert all(label in text for label in ['1 Tasks', '2 Conversations'])
     assert all(len(line) <= 70 for line in text.splitlines())
-    assert '2 Board Updates' in text.splitlines()[11] and '3 Conversations' in text.splitlines()[16]
+    assert '2 Conversations' in text.splitlines()[11]
 
 
 def aggregate(fd, root, size):
-    key(fd, '2')
+    key(fd, '1')
     text = frame(root, size + '-aggregate')
-    assert 'All progress' in text and 'Readable' in text
+    assert 'Task List:' in text and 'Board Updates' in text
     left = '\n'.join(line[:28 if size == '70' else 40] for line in text.splitlines())
-    assert '#1 Note' in left and '#2 Progress' in left and 'Readable' not in left
-    key(fd, '\x1b[B')
-    text = frame(root, size + '-individual-note')
-    assert 'Readable' in text and 'Progress body' not in text
-    key(fd, '\x1b[B')
-    text = frame(root, size + '-individual-progress')
-    assert 'Progress body' in text and 'Readable' not in text
-    key(fd, '\x1b[A'); key(fd, '\x1b[A')
-    assert 'All progress · 2 loaded' in frame(root, size + '-aggregate-return')
+    assert 'Board Updates' not in left and 'Readable' not in left
     key(fd, '\r'); key(fd, '\x1b[F')
     assert 'Progress body' in frame(root, size + '-aggregate-bottom')
-    key(fd, '\x1b'); key(fd, '2')
+    key(fd, '\x1b'); key(fd, '1')
 
 
 def conversation(fd, root):
-    key(fd, '3'); key(fd, 'n')
+    key(fd, '2'); key(fd, 'n')
     draft = frame(root, '70-inline-draft')
-    assert all(label in draft for label in ['1 Tasks', '2 Board Updates', '3 Conversations', 'New Conversation'])
+    assert all(label in draft for label in ['1 Tasks', '2 Conversations', 'New Conversation'])
     key(fd, 'inspect 123nmi\x13')
     smoke['wait_state'](fd, root, lambda rows: rows and rows[0]['status'] == 'Needs Input')
     assert any(m['text'] == 'inspect 123nmi' for m in smoke['conversations'](root)[0]['messages'])
     key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
-    key(fd, '2'); assert 'Readable' in frame(root, 'back-to-board')
-    key(fd, '3'); assert 'Demo complete' in frame(root, '70-conversation')
+    key(fd, '1'); assert 'Board Updates' in frame(root, 'back-to-board')
+    key(fd, '2'); assert 'Demo complete' in frame(root, '70-conversation')
     assert smoke['conversations'](root)[0]['status'] == 'For Review'
     key(fd, '\r'); assert 'Open' in frame(root, '70-open-conversation')
     assert smoke['conversations'](root)[0]['status'] == 'Finished'
@@ -110,15 +102,15 @@ def exercise(fd, root):
     assert 'Tasks' in frame(root, 'list')
     text = frame(root, '100-details')
     assert 'Task Workspace' in text and 'Task List: Task Shark Demo' in text
-    assert '2 Board Updates' in text.splitlines()[14] and '3 Conversations' in text.splitlines()[20]
-    assert all(label in text for label in ['1 Tasks', '2 Board Updates', '3 Conversations', 'Preview'])
-    key(fd, '3'); assert 'No conversations for this task' in frame(root, 'empty-conversations')
+    assert '2 Conversations' in text.splitlines()[14]
+    assert all(label in text for label in ['1 Tasks', '2 Conversations', 'Preview'])
+    key(fd, '2'); assert 'No conversations for this task' in frame(root, 'empty-conversations')
     board(fd, root)
     conversation(fd, root)
     key(fd, '\x1b'); text = frame(root, 'restored-list')
     assert 'Task Workspace' in text and '1 Tasks' in text
-    key(fd, '\r'); key(fd, '2'); assert 'Readable' in frame(root, 'reopened-board')
-    key(fd, '1'); key(fd, '\x1b[B'); key(fd, '2')
+    key(fd, '\r'); key(fd, '1'); assert 'Board Updates' in frame(root, 'reopened-board')
+    key(fd, '1'); key(fd, '\x1b[B')
     assert 'No Board Updates' in frame(root, 'other-task')
 
 
