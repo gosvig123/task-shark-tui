@@ -32,6 +32,9 @@ A Pi conversation attached to one task snapshot.
 **General Conversation**:
 A Pi conversation with no attached task.
 
+**Generated Conversation Title**:
+A concise title made from a conversation's first user message when it has no explicit title.
+
 **Agent Workspace**:
 The fixed filesystem directory in which Pi runs a conversation.
 
@@ -80,6 +83,7 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 - Confirming a **Creation Draft** for a task saves a Pending task in its source **Task List**.
 - A conversation **Creation Draft** starts with an empty transcript and message; its optional settings do not save it.
 - A conversation **Creation Draft** is saved with its first nonblank message, before delivery to Pi.
+- A **Generated Conversation Title** runs in the background after first-message save; it keeps an explicit title and keeps the fallback title if generation fails.
 - Cancelling a **Creation Draft** saves no task or conversation, creates no **Agent Workspace**, and starts no Pi process.
 - Existing **Task Lists** load automatically at startup, including the normal tasks-go daily reset; task creation still needs explicit confirmation.
 - A **Task List** filter does not change the **Active Task List**.
