@@ -26,7 +26,7 @@ export function conversationDetails(c: Conversation, live: LiveState, width = 80
   return [heading, transcript(c, live, width), safe(lines.join('\n'))].join('\n');
 }
 export const welcome = [
-  'Task Shark', '', 'Browse tasks with t. Start a general conversation with g.',
+  'Task Shark', '', 'Browse tasks with t. Start a general conversation with c, then n.',
   'In Tasks: n creates a Pending task; l selects a Task List.', '',
   'Select a task, press 3, then n for a task-backed conversation.',
   'Existing Task Lists load automatically. f refreshes them.', '',

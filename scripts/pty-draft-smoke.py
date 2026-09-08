@@ -9,7 +9,8 @@ key, drain = smoke['key'], smoke['drain']
 
 
 def empty_and_cancel(fd, root):
-    output = key(fd, 'g').replace(b'\x1b[1C', b' ')
+    key(fd, 'c')
+    output = key(fd, 'n').replace(b'\x1b[1C', b' ')
     assert b'New Conversation' in output and b'unsaved' in output
     assert b'First message' not in output and b'Pi model' not in output
     key(fd, '   \x13')
@@ -48,13 +49,13 @@ def first_send(fd, root):
     assert row['model'] == 'fixture/model' and 'task' not in row
     assert any(m['text'] == message for m in row['messages']), row['messages']
     key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
-    key(fd, 'g'); key(fd, '\x13')  # Saved transcript must not leak into a fresh draft.
+    key(fd, 'c'); key(fd, 'n'); key(fd, '\x13')  # Saved transcript must not leak into a fresh draft.
     assert len(smoke['conversations'](root)) == 1
     key(fd, '\x1b')
 
 
 def task_and_workspace(fd, root):
-    key(fd, 'g'); key(fd, 'Linked draft text')
+    key(fd, 'c'); key(fd, 'n'); key(fd, 'Linked draft text')
     key(fd, '\x14')  # Ctrl-T selects from automatically loaded tasks.
     key(fd, 'Work'); key(fd, '\r')
     key(fd, '\x17'); key(fd, root); key(fd, '\r')

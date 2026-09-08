@@ -62,7 +62,9 @@ def wait_state(fd, root, predicate):
 
 
 def create(fd, general=False, title=""):
-    key(fd, "g" if general else "n")
+    if general:
+        key(fd, "c")
+    key(fd, "n")
     if title:
         key(fd, "\x0f")
         key(fd, title + "\r")

@@ -72,7 +72,7 @@ reopening restores preview focus without marking work reviewed. Escape clears se
 only in the current Service Tab (inside a workspace it returns left first).
 Tasks saves its Task List and status filters across restarts. Use `l` and `o` to change them, or select **All Lists** and **All tasks** to reset them. A removed list falls back to All Lists. Search, selection, and preview position remain session-only. Filters never change the Active Task List.
 
-Each task can have many conversations. `g` always creates a general conversation.
+Each task can have many conversations. Press `c`, then `n` to start a General Conversation.
 The first message is saved before delivery; failed delivery keeps it for manual
 resubmission. No draft is saved before the first nonblank message.
 Blank titles are named from the first message through a separate, tool-free Terra call. Naming runs in the background, keeps your explicit titles, and retains the fallback title if it fails.
@@ -87,7 +87,7 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `1`, `2`, `3`, `↑`, `↓` in Task Workspace | Select left sections/items; arrows scroll when focused right |
 | `Enter`, `Escape` in Task Workspace | Open preview/focus right; return left; clear search from left navigation |
 | `n`, `a`, `f` in Board Updates | Post/retry, explicitly review board, refresh shared feed |
-| `n`, `g` | New task in task selector; new conversation in Conversations; `g` always general |
+| `n` | New task in task selector; new conversation in Conversations |
 | `l`, `o` | Choose a Task List (includes empty lists), or task status/due-date filter |
 | `m` | Compose a message, or answer a pending Pi Request |
 | `a` | Mark completed work reviewed |
@@ -100,8 +100,7 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `?` | Controls |
 | `q`, `Ctrl-C` | Quit; confirm if a run is active |
 
-While the draft composer is focused, letters (including navigation shortcuts)
-are message text. Escape discards it before navigation or quit.
+While the draft composer is focused, letters (including navigation shortcuts) are message text. Escape discards it before navigation or quit.
 
 Modal text fields support Left/Right (`Ctrl-B/F`), Home/End (`Ctrl-A/E`), and
 Ctrl-Left/Right moves by word. Alt-Backspace / Ctrl-Backspace deletes the previous word (also Ctrl-W outside conversation drafts); Alt-D / Ctrl-Delete deletes the next word.
@@ -128,8 +127,8 @@ not concatenate session branches or rewrite Pi session files.
 | Environment variable | Purpose |
 | --- | --- |
 | `TASK_SHARK_DATA_DIR` | Alternative data directory; demo adds `/demo` |
-| `TASK_SHARK_NAMING_MODEL` | Conversation title model; default `openai-codex/gpt-5.6-terra` |
 | `TASK_SHARK_PI` | Pi executable path; default searches PATH and `~/.pi/agent/bin/pi` |
+| `TASK_SHARK_NAMING_MODEL` | Conversation title model; default `openai-codex/gpt-5.6-terra` |
 | `TASK_SHARK_TASKS` | tasks-go executable path; default searches PATH and `~/.local/bin/tasks` |
 | `TASKSHARK_MCP_RESOURCE_DIR` | Widget Board helper directory; default `/Applications/TasksWidget.app/Contents/Resources/TaskBoardMCP` |
 | `TASKSHARK_BOARD_ROOT` | Shared Board root; default `~/Library/Application Support/TaskShark/SharedTasks/v1` |

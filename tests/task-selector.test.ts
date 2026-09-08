@@ -16,6 +16,7 @@ function fixture() {
   const conversations = tasks.map((task, i) => conversationSchema.parse({ id: `00000000-0000-4000-8000-00000000000${i}`,
     title: task.title + ' reply', workspace: '/tmp', status: 'For Review', task, updatedAt: '', demo: true, messages: [] }));
   const view = Object.assign(Object.create(View.prototype), { tab: 'Tasks', selected: '', query: '', taskFilter: TaskFilter.all,
+    collapsedSections: new Set<string>(),
     catalog: { tasks, byList: new Map([['Work', tasks], ['Empty', []]]), lists: ['Work', 'Empty'], currentList: 'Work' },
     navigation: new NavigationMemory(), boards: new Boards(() => {}, true), workspaceSection: 'Details', follow: true,
     runtime: { store: { conversations }, state: () => liveState(), acknowledge: () => assert.fail('selection acknowledged work') },
