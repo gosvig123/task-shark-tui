@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "check:limits": "tsx scripts/check-limits.ts && python3 scripts/check-files.py",
-    "smoke": "python3 scripts/pty-smoke.py && python3 scripts/pty-review-smoke.py && python3 scripts/pty-creation-smoke.py && python3 scripts/pty-list-search-smoke.py && python3 scripts/pty-draft-smoke.py && python3 scripts/pty-workspace-smoke.py && python3 scripts/pty-navigation-smoke.py && python3 scripts/pty-task-edit-smoke.py && python3 scripts/pty-board-refresh-smoke.py",
+    "smoke": "python3 scripts/pty-smoke.py && python3 scripts/pty-review-smoke.py && python3 scripts/pty-creation-smoke.py && python3 scripts/pty-list-search-smoke.py && python3 scripts/pty-draft-smoke.py && python3 scripts/pty-workspace-smoke.py && python3 scripts/pty-navigation-smoke.py && python3 scripts/pty-task-edit-smoke.py && python3 scripts/pty-board-refresh-smoke.py && python3 scripts/pty-ui-smoke.py",
     "check:board": "tsx scripts/check-board-discovery.ts",
     "check:local": "tsx scripts/check-local.ts",
     "check:resume": "tsx scripts/check-pi-resume.ts"

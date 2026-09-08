@@ -1,3 +1,4 @@
+import { taskNavigationWidth, taskNavigationHeights } from './layout.js';
 import { allProgress, boardRows } from './board-preview.js';
 import { wrapTextWithAnsi, truncateToWidth } from '@earendil-works/pi-tui';
 import { taskRows, selectTask, selectorState } from './task-selector.js';
@@ -7,7 +8,7 @@ import { safe } from './dialogs.js';
 import { workspaceSection, type WorkspaceSection } from './workspace.js';
 
 export const sections: WorkspaceSection[] = ['Details', 'Board Updates', 'Conversations'];
-export function workspaceWidth(view: View): number { return Math.max(24, Math.floor(Number(view.screen.width) * .32)); }
+export function workspaceWidth(view: View): number { return taskNavigationWidth(Number(view.screen.width)); }
 export function workspacePanels(view: View): blessed.Widgets.ListElement[] {
   return sections.map((section) => blessed.list({ parent: view.screen, hidden: true, left: 0, width: '32%',
     border: 'line', tags: false, keys: false, scrollable: true, padding: { top: section === 'Details' ? 1 : 0 },
@@ -15,8 +16,7 @@ export function workspacePanels(view: View): blessed.Widgets.ListElement[] {
 }
 export function renderNavigation(view: View): void {
   if (!view.screen.focused || view.screen.focused.detached) view.detail.focus();
-  const height = Number(view.screen.height) - 5, first = Math.floor(height / 3), second = Math.floor((height - first) / 2);
-  const sizes = [first, second, height - first - second];
+  const sizes = taskNavigationHeights(Math.max(0, Number(view.screen.height) - 5));
   let top = 2;
   for (const [i, box] of view.workspacePanels.entries()) {
     const section = sections[i], active = section === view.workspaceSection;

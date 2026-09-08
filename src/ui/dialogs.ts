@@ -1,3 +1,4 @@
+import { resizePanel } from './layout.js';
 import blessed, { type Widgets } from 'blessed';
 import { stripVTControlCharacters } from 'node:util';
 import { cursorInput } from './cursor-input.js';
@@ -12,6 +13,7 @@ export async function textInput(screen: Widgets.Screen, title: string, prefill =
   const box = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
     height: multiline ? '70%' : 7, border: 'line', style: { border: { fg: 'cyan' } },
     label: safe(` ${title} `), tags: false });
+  resizePanel(box, () => multiline ? Math.floor(Number(screen.height) * .7) : 7);
   blessed.text({ parent: box, bottom: 0, left: 1, height: 2,
     content: '←/→ · Home/End · Ctrl-W delete word · Ctrl-U clear all\n' +
       (multiline ? 'Ctrl-S submit · Enter newline · Esc cancel' : 'Enter / Ctrl-S submit · Esc cancel') });
@@ -24,6 +26,7 @@ export function choicePanel(screen: Widgets.Screen, title: string, options: stri
   const panel = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
     height: details === undefined ? Math.min(options.length + 4, Math.max(6, Number(screen.height) - 4)) : '90%',
     border: 'line', label: safe(` ${title} `), tags: false });
+  resizePanel(panel, () => details === undefined ? options.length + 4 : Number(screen.height) - 2);
   const list = blessed.list({ parent: panel, left: 1, right: 1, bottom: 1,
     ...(details === undefined ? { top: 0 } : { height: 2 }), keys: details === undefined,
     items: options.map(safe), tags: false, style: { selected: selectionStyle } });

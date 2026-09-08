@@ -11,7 +11,11 @@ Requires Node.js 22 or later, npm, and a terminal. Use 100 columns × 30 rows wh
 cd task-shark-tui
 npm install
 npm start
+# Optional local command; do not replace an existing task-shark:
+ln -s "$PWD/bin/task-shark" "$HOME/.local/bin/task-shark"
 ```
+
+With `~/.local/bin` on PATH, run `task-shark` or `task-shark --demo` from any directory. Keep this checkout and its local dependencies in place.
 
 Live mode reads `tasks-go` snapshots and uses your installed Pi, credentials, model
 settings, skills, and compatible extensions. Nothing is sent to a model until you
@@ -25,20 +29,18 @@ to every tool. Model calls can cost money.
 can rewrite `today.md` and its daily reset state; the app permits those normal side effects.
 Press `f` to refresh. Task creation still writes to your existing source list only
 after you confirm **Create pending task**. The old `--allow-task-reset` app flag is no longer needed.
-
 Try the offline version first:
 ```sh
 npm run demo
 ```
 
 Demo mode starts neither Pi nor tasks-go. It supplies fixture tasks, an empty list, and a simulated
-agent. Send any message, press `i`, and answer the Pi Request to finish the response.
+agent. Send any message, press `m`, and answer the Pi Request to finish the response.
 Include `input`, `select`, or `editor` in a demo message to try those request types.
 Use `long approval` to try scrollable confirmation details. Demo task creation stays
 in memory until quit; it never writes a task file.
 
 ## Work loop
-
 1. Press `t` to browse your existing Tasks. `l` filters by
    Task List, including empty lists; **All Lists** deduplicates Today references.
 2. In the task selector, `n` starts a task draft: source list, title, optional notes, confirmation.
@@ -54,13 +56,13 @@ in memory until quit; it never writes a task file.
    Press `n` in the task selector for a task, or in Conversations for a Task-backed Conversation. In the
    global Conversations tab, `n` opens an empty General Conversation draft.
    The transcript and inline composer start empty; type immediately. `Ctrl-O` edits title/model,
-   `Ctrl-T` selects a task, and `Ctrl-G` selects the Agent Workspace.
+   `Ctrl-T` selects a task, and `Ctrl-W` selects the Agent Workspace.
 4. Write the first message. `Ctrl-S` saves the conversation and sends; `Enter` adds
    a line. Only then can a blank workspace create a private directory and Pi start.
    Escape in the inline composer discards the draft and returns to navigation.
    Escape in settings returns to the draft without changing settings. A blank
    first send keeps the empty draft open without a record, workspace, or Pi process. The task and workspace are fixed after saving.
-5. Switch conversations while Pi works. Press `i` when one Needs Input.
+5. Switch conversations while Pi works. Press `m` when one Needs Input.
 6. Open completed work from the For Review Inbox with `Enter`, or mark it reviewed
    with `a`. Merely selecting a row does not acknowledge it.
 
@@ -78,7 +80,6 @@ Messages sent during a run become Queued Messages and are delivered in order aft
 that run settles, including retries. They do not interrupt a pending Pi Request.
 
 ## Controls
-
 | Key | Action |
 | --- | --- |
 | `c`, `t`, `r` | Conversations, Tasks, For Review Inbox |
@@ -88,13 +89,12 @@ that run settles, including retries. They do not interrupt a pending Pi Request.
 | `n`, `a`, `f` in Board Updates | Post/retry, explicitly review board, refresh shared feed |
 | `n`, `g` | New task in task selector; new conversation in Conversations; `g` always general |
 | `l`, `o` | Choose a Task List (includes empty lists), or task status/due-date filter |
-| `m` | Compose a message |
-| `i` | Answer the selected conversation's Pi Request |
+| `m` | Compose a message, or answer a pending Pi Request |
 | `a` | Mark completed work reviewed |
 | `x` | Stop selected run and discard its Queued Messages, after confirmation |
 | `d` | Read task details |
 | `e` in Task Workspace | Edit title, multiline notes, or due date; explicit Save/Cancel |
-| `/`, `Escape` | Search; leave search keeping query, or clear search from navigation |
+| `/`, `Escape` | Search inline in the current list; Enter/Escape keeps query; Escape from navigation clears it |
 | `f` | Refresh tasks |
 | `PageUp`, `PageDown`, `End` | Scroll transcript; follow live output |
 | `?` | Controls |
@@ -104,7 +104,7 @@ While the draft composer is focused, letters (including navigation shortcuts)
 are message text. Escape discards it before navigation or quit.
 
 Modal text fields support Left/Right (`Ctrl-B/F`), Home/End (`Ctrl-A/E`), and
-Ctrl-Left/Right moves by word. Ctrl-W / Alt-Backspace / Ctrl-Backspace deletes the previous word; Alt-D / Ctrl-Delete deletes the next word.
+Ctrl-Left/Right moves by word. Alt-Backspace / Ctrl-Backspace deletes the previous word (also Ctrl-W outside conversation drafts); Alt-D / Ctrl-Delete deletes the next word.
 Ctrl-U clears the whole input. These keys work in messages, task fields, searches, and pickers. Enter submits single-line fields; Ctrl-S submits notes. Escape cancels.
 In a Pi Request, `Escape` sends a cancellation. Confirmation dialogs default to No.
 Their wrapped details scroll with `PageUp`/`PageDown` and `Home`/`End`; Up/Down selects

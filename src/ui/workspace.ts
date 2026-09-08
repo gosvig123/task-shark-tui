@@ -75,7 +75,7 @@ export async function postBoard(view: View): Promise<void> {
 export function workspaceFooter(view: View): string {
   const controls = view.workspaceSection === 'Board Updates' ? 'n post/retry · a review loaded · f refresh · PgUp/PgDn scroll' :
     view.workspaceSection === 'Details' ? 'n task · e edit · / search · l lists · o filters · f refresh · q quit' :
-      'n new · m message · i input · a review · q quit';
+      'n new · m message · a review · q quit';
   const notice = view.taskScope && view.todayRemovals?.has(taskKey(view.taskScope)) ? 'Date saved; Today removal pending. e retries removal only.' : view.notice;
   return ` 1/2/3 sections · ${view.workspaceFocus === 'left' ? '↑↓ preview · Enter open · Esc clear search' : '↑↓ scroll · Esc left'}\n ${controls}\n ${notice}`;
 }

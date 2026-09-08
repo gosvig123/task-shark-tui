@@ -41,7 +41,9 @@ function widgets(screen: Widgets.Screen): Form {
   return { panel, boxes, notice, actions };
 }
 function draw(form: Form, state: TaskFormState, screen: Widgets.Screen, busy: boolean): void {
+  const compact = Number(screen.height) < 25;
   form.boxes.forEach((box, i) => {
+    box.top = i * (compact ? 3 : 4); if (i < 2) box.height = compact ? 3 : 4; else box.bottom = compact ? 5 : 8;
     const layout = editorLines(state.editors[i], Math.max(2, Number(box.width) - 2));
     const height = Math.max(1, Number(box.height) - 2), top = Math.max(0, layout.row - height + 1);
     const content = layout.lines.slice(top, top + height).join('\n');
@@ -49,6 +51,7 @@ function draw(form: Form, state: TaskFormState, screen: Widgets.Screen, busy: bo
     box.style.border = { fg: state.focus === i ? 'cyan' : 'white' };
     box.setLabel(`${state.focus === i ? '▶ ' : ''}${state.error && state.focus === i ? fields[i] + ' · ' + state.error : labels[i]}`);
   });
+  form.notice.height = compact ? 2 : 5;
   const { editor } = state;
   const changed = fields.some((f, i) => state.editors[i].value !== (f === 'dueDate' ? editor.original.dueDate?.slice(0, 10) ?? '' : editor.original[f] ?? ''));
   form.panel.setLabel(` Edit task${changed ? ' · Unsaved changes' : ''} `);

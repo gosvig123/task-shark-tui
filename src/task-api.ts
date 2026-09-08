@@ -33,13 +33,13 @@ export async function loadLists(binary: string, allowed = false, signal?: AbortS
 export async function loadTaskSnapshot(binary: string, list: string, allowed = false, signal?: AbortSignal) {
   return parseTaskSnapshot(await taskCommand(binary, ['snapshot', '--list', list], allowed, signal));
 }
-export interface TaskDraft { list: string; title: string; description: string }
+export interface TaskDraft { list: string; title: string; description: string; dueDate?: string }
 export interface TaskCreation { confirmed: boolean; notice: string; snapshot?: TaskSnapshot }
 export async function createTask(binary: string, draft: TaskDraft, allowed = false): Promise<TaskCreation> {
   if (!draft.title.trim()) throw new Error('Task title is required. Nothing was created.');
   const before = await loadTaskSnapshot(binary, draft.list, allowed);
   const request = { schemaVersion: 1, requestId: randomUUID(), operation: 'task.create', list: draft.list,
-    expectedRevision: before.revision, changes: { title: draft.title.trim(), description: draft.description, completed: false } };
+    expectedRevision: before.revision, changes: { title: draft.title.trim(), description: draft.description, dueDate: draft.dueDate, completed: false } };
   let result: TaskCreation;
   try {
     const response = responseSchema.parse(JSON.parse(await taskCommand(binary, ['exec'], allowed, undefined, request)));

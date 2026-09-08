@@ -2,7 +2,7 @@ import { editTask } from './task-edit.js';
 import { workspaceKey } from './workspace-keys.js';
 import type { View } from './view.js';
 import { Tab } from './view.js';
-import { answer, compose, createConversation, details, open, quit, search, selectTaskFilter, stopRun } from './actions.js';
+import { compose, createConversation, details, open, quit, search, selectTaskFilter, stopRun } from './actions.js';
 import { choose } from './dialogs.js';
 import type { Config } from '../config.js';
 import { createTaskFromView, selectTaskList } from './task-creation.js';
@@ -11,16 +11,16 @@ import { TaskFilter } from './task-filters.js';
 
 const help = [
   'c / t / r: Conversations / Tasks / For Review Inbox',
-  'Up / Down: select · Enter: open preview or mark a conversation read',
+  'Up / Down: select · Enter: fold/unfold a category, open preview, or mark a conversation read',
   'Task Workspace: 1/2/3 select stacked left sections; arrows preview items, Enter opens on right',
   'Escape: right pane to left sections; Escape on left clears search, keeps list and status',
   'e in Task Workspace: edit title, notes, due date; Save explicitly, Escape cancels',
   'Board Updates: n post/retry · a on right reviews all loaded board entries · f refreshes shared feed',
   'n: new task in Tasks selector; new conversation in Conversations · g: general',
-  'Drafts: Ctrl-T task · Ctrl-G workspace · Ctrl-O title/model · Escape cancels · first message saves',
+  'Drafts: Ctrl-T task · Ctrl-W workspace · Ctrl-O title/model · Escape cancels · first message saves',
   'm: message; Ctrl-S sends, Enter adds a line, Esc cancels',
-  'Text inputs: Ctrl-W / Alt-Backspace delete previous word; Alt-D / Ctrl-Delete next; Ctrl-U clears all',
-  'i: answer the selected conversation’s Pi Request; Esc cancels that request',
+  'Text inputs: Alt-Backspace deletes previous word (also Ctrl-W outside drafts); Alt-D / Ctrl-Delete next; Ctrl-U clears all',
+  'm answers a pending Pi Request; Esc cancels that request',
   'a: mark reviewed · p: pin/unpin selected conversation · x: stop selected run and clear its Queued Messages',
   'd: task details · /: search · l: Task Lists · o: task filters · f: refresh tasks · Escape: clear search',
   'PageUp/PageDown: scroll transcript · End: follow live output',
@@ -35,7 +35,7 @@ export function bindKeys(view: View, config: Config, shutdown: () => Promise<voi
     '1': () => {}, '2': () => {}, '3': () => {}, e: () => editTask(view, config),
     n: () => (view.tab === Tab.tasks || (view.taskScope && view.workspaceSection === 'Details')) ? createTaskFromView(view, config) : createConversation(view, false, config),
     g: () => createConversation(view, true, config), m: () => compose(view), l: () => selectTaskList(view, config),
-    o: () => selectTaskFilter(view), i: () => answer(view), x: () => stopRun(view), d: () => details(view), '/': () => search(view),
+    o: () => selectTaskFilter(view), x: () => stopRun(view), d: () => details(view), '/': () => search(view),
     a: () => { const c = view.current()?.conversation; if (c) view.runtime.acknowledge(c); },
     p: () => { const c = view.current()?.conversation; if (c) view.runtime.store.togglePin(c); },
     f: () => { void refreshTasks(view, config); },

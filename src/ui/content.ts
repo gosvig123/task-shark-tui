@@ -20,9 +20,9 @@ export function conversationDetails(c: Conversation, live: LiveState, width = 80
   lines.length = 0;
   if (c.error) lines.push(`Needs Input\n${c.error}`, '');
   for (const request of live.requests) lines.push(`Pi Request: ${request.title ?? request.method}`,
-    request.message ?? '', 'Press i to answer.');
+    request.message ?? '', 'Press m to answer the Pi Request.');
   if (c.queue.length) lines.push('', 'Queued Messages', ...c.queue.map((text, i) => `${i + 1}. ${text}`));
-  lines.push('', 'm: message · i: Pi Request · a: mark reviewed · x: stop run');
+  lines.push('', 'm: message · a: mark reviewed · x: stop run');
   return [heading, transcript(c, live, width), safe(lines.join('\n'))].join('\n');
 }
 export const welcome = [

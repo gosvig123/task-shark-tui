@@ -1,3 +1,4 @@
+import { messageEditor } from './message-editor.js';
 import { selectorState, searchTasks, conversationTask } from './task-selector.js';
 import { snapshot, restore } from './navigation-memory.js';
 import { openWorkspace, workspaceSection } from './workspace.js';
@@ -7,6 +8,7 @@ import { Tab, type View } from './view.js';
 import { taskDetails } from './content.js';
 import type { Config } from '../config.js';
 import { TaskFilter } from './task-filters.js';
+import { searchConversations } from './conversation-search.js';
 import { chooseSearchable } from './list-search.js';
 
 export async function createConversation(view: View, general = false, config?: Config): Promise<void> {
@@ -22,11 +24,11 @@ export async function createConversation(view: View, general = false, config?: C
 }
 export async function compose(view: View, c = view.current()?.conversation): Promise<void> {
   if (!c) { view.notice = 'Select or create a conversation first.'; return; }
-  const text = await textInput(view.screen, `Message · ${c.title}`, '', true);
+  if (view.runtime.state(c).requests.length) { await answer(view, c); return; }
+  const text = await messageEditor(view);
   if (text?.trim()) { view.follow = true; void view.runtime.send(c, text); }
 }
-export async function answer(view: View): Promise<void> {
-  const c = view.current()?.conversation;
+export async function answer(view: View, c = view.current()?.conversation): Promise<void> {
   const request = c && view.runtime.state(c).requests[0];
   if (!c || !request) { view.notice = 'No pending Pi Request in this conversation.'; return; }
   const title = `${request.title ?? 'Pi Request'}${request.message ? ` · ${request.message}` : ''}`;
@@ -53,10 +55,10 @@ export async function selectTaskFilter(view: View): Promise<void> {
 }
 export async function search(view: View): Promise<void> {
   if (view.taskScope || view.tab === Tab.tasks) { await searchTasks(view); return; }
-  const text = await textInput(view.screen, 'Search · blank clears filter', view.query);
-  if (text !== undefined) { view.query = text; view.selected = ''; view.follow = true; }
+  await searchConversations(view);
 }
 export function open(view: View): void {
+  if (view.current()?.section) { view.toggleSection(); return; }
   const c = view.current()?.conversation;
   if (c) {
     const target = c.task && conversationTask(view, c.task);

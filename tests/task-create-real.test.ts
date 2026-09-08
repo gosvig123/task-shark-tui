@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createTask, loadLists, loadTaskSnapshot, taskCommand } from '../src/task-api.js';
 import { temporary } from './helpers.js';
+import { localDate } from '../src/ui/task-filters.js';
 
 const binary = process.env.TASK_SHARK_TEST_TASKS ?? join(homedir(), '.local/bin/tasks');
 function isolatedTasks(home: string): string {
@@ -23,11 +24,13 @@ test('installed tasks-go creates a Pending task in existing empty active list us
     const lists = await loadLists(wrapper, true);
     assert.equal(lists.currentList, 'Existing empty');
     assert.deepEqual(lists.lists, ['Existing empty', 'today']);
-    const result = await createTask(wrapper, { list: lists.currentList, title: 'Isolated fixture', description: 'Fixture notes' }, true);
+    const dueDate = localDate();
+    const result = await createTask(wrapper, { list: lists.currentList, title: 'Isolated fixture', description: 'Fixture notes', dueDate }, true);
     assert.equal(result.confirmed, true, result.notice);
     const task = result.snapshot!.tasks[0];
     assert.equal(task.title, 'Isolated fixture');
     assert.equal(task.completed, false);
+    assert.equal(task.dueDate?.slice(0, 10), dueDate);
     assert.equal(task.description, 'Fixture notes');
     assert.equal(task.ownerList, 'Existing empty');
     assert.equal((await loadTaskSnapshot(wrapper, 'today', true)).tasks.length, 0);

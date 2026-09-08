@@ -39,7 +39,8 @@ test('workspace keys keep board review separate and preserve literal untrusted c
   await workspaceKey(view, 'a'); assert.equal(view.boards.state(task.id).reviewed, 1);
   await workspaceKey(view, 'escape'); assert.equal(view.workspaceFocus, 'left'); assert.equal(view.taskScope, task);
   await workspaceKey(view, '3'); assert.match(workspaceContent(view), /No conversations/);
-  workspaceSection(view, 'Details'); assert.equal(await workspaceKey(view, 'i'), true);
+  workspaceSection(view, 'Details'); assert.equal(await workspaceKey(view, 'i'), false);
+  assert.equal(await workspaceKey(view, 'm'), true);
   await workspaceKey(view, 'escape'); assert.equal(view.taskScope, task);
 });
 test('highlighting a conversation previews without review; Enter opens and Escape stays in workspace', async () => {

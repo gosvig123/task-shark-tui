@@ -7,7 +7,7 @@ import { choose, textInput } from './dialogs.js';
 import { refreshTasks } from './refresh.js';
 import { chooseSourceList } from './list-search.js';
 import { Tab, type View } from './view.js';
-import { TaskFilter } from './task-filters.js';
+import { localDate, TaskFilter } from './task-filters.js';
 
 async function taskListsReady(view: View, config: Config): Promise<boolean> {
   if (view.refreshing) { view.notice = 'Task Lists are loading. Try again when the refresh finishes.'; return false; }
@@ -43,14 +43,15 @@ async function taskDraft(view: View): Promise<TaskDraft | undefined> {
   if (!title?.trim()) return;
   const description = await textInput(view.screen, 'New Task · notes (optional)', '', true);
   if (description === undefined) return;
+  const dueDate = localDate();
   const confirmed = await choose(view.screen, 'Save new Pending task?', ['Cancel', 'Create pending task'],
-    `Task List: ${list}\nTitle: ${title.trim()}\n\n${description || 'No notes.'}`);
+    `Task List: ${list}\nTitle: ${title.trim()}\nDue date: ${dueDate}\n\n${description || 'No notes.'}`);
   if (confirmed !== 'Create pending task') return;
-  return { list, title: title.trim(), description };
+  return { list, title: title.trim(), description, dueDate };
 }
 function createDemoTask(view: View, draft: TaskDraft) {
   const task = { id: randomUUID(), title: draft.title, description: draft.description,
-    ownerList: draft.list, completed: false, subtasks: [] };
+    ownerList: draft.list, dueDate: draft.dueDate, completed: false, subtasks: [] };
   view.catalog.byList.get(draft.list)!.push(task);
   return { confirmed: true, snapshot: undefined, notice: `Created Pending demo task in ${draft.list}; kept in memory only.` };
 }

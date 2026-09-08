@@ -1,3 +1,4 @@
+import { taskNavigationWidth } from './layout.js';
 import blessed from 'blessed';
 import type { Task } from '../model.js';
 import { Tab, type View, type Row } from './view.js';
@@ -61,7 +62,7 @@ export function searchTasks(view: View): Promise<void> {
 }
 
 function drawSearch(view: View, input: blessed.Widgets.BoxElement, editor: CursorEditor): void {
-  input.width = Math.max(24, Math.floor(Number(view.screen.width) * .32)) - 2;
+  input.width = taskNavigationWidth(Number(view.screen.width)) - 2;
   const layout = editorLines(editor, Math.max(2, Number(input.width) - 2));
   input.setContent('/ ' + layout.lines[layout.row]); input.setFront();
   view.footer.setContent(' Search tasks · type to filter · ←/→ cursor · Ctrl-W word · Ctrl-U clear all\n Enter / Escape returns to task selector; query is kept.');

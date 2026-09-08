@@ -9,7 +9,7 @@ Pi is the agent engine; the terminal app owns navigation and review state.
 The Conversations and Tasks destinations in the terminal interface.
 
 **Task Workspace**:
-The Tasks surface with an inline searchable task selector in the upper third of the left pane, task-scoped Board Updates and Task-backed Conversations below, and one shared preview and interaction pane on the right.
+The Tasks surface with an inline searchable task selector in the upper half of the left pane, task-scoped Board Updates and Task-backed Conversations below, and one shared preview and interaction pane on the right.
 
 **Board Updates**:
 The task-scoped, append-only feed of human and agent Note, Progress, Decision, Blocker, and Handoff updates shared with the task widget, separate from subtasks and conversation transcripts.
@@ -72,6 +72,7 @@ The Needs Input, Running, For Review, or Finished state shown for a conversation
 - Changing a source task's due date removes its Today reference without deleting the source task; tasks stored directly in Today remain there.
 - Saving a task date and removing its Today reference are separate operations; failed reference removal does not roll back the saved date.
 - Pending **Pi Requests** and failed runs take priority over Running and For Review.
+- Message answers the selected conversation’s pending **Pi Request** before composing a new message; cancelling that request sends its cancellation.
 - Opening completed work or marking it reviewed changes For Review to Finished.
 - **Queued Messages** run in order; interrupted messages require manual resubmission.
 - An **Unsent Submission** can already exist in Pi history; it never runs again automatically.

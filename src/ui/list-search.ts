@@ -1,3 +1,4 @@
+import { resizePanel } from './layout.js';
 import blessed, { type Widgets } from 'blessed';
 import { safe } from './dialogs.js';
 import { selectionStyle } from './styles.js';
@@ -11,6 +12,7 @@ function searchPanel(screen: Widgets.Screen, title: string, count: number) {
   const panel = blessed.box({ parent: screen, top: 'center', left: 'center', width: '90%',
     height: Math.min(count + 7, Math.max(8, Number(screen.height) - 4)), border: 'line',
     label: safe(` ${title} `), tags: false });
+  resizePanel(panel, () => count + 7);
   const query = blessed.text({ parent: panel, top: 0, left: 1, right: 1, height: 1, tags: false });
   const list = blessed.list({ parent: panel, top: 2, left: 1, right: 1, bottom: 2, keys: false,
     tags: false, style: { selected: selectionStyle } });
@@ -33,7 +35,7 @@ export function chooseSearchable<T>(screen: Widgets.Screen, title: string, optio
     const editor = new CursorEditor('', false);
     let selected = 0, matches = options;
     const render = () => renderSearch(controls, editor, matches.map(label), selected);
-    const finish = (value?: T) => { panel.destroy(); screen.render(); resolve(value); };
+    const finish = (value?: T) => { screen.removeListener('resize', render); panel.destroy(); screen.render(); resolve(value); };
     list.on('keypress', (text: string, key: Widgets.Events.IKeyEventArg) => {
       if (key.name === 'escape') return finish();
       if (key.name === 'enter' || key.name === 'return') { if (matches[selected] !== undefined) finish(matches[selected]); return; }
@@ -48,6 +50,6 @@ export function chooseSearchable<T>(screen: Widgets.Screen, title: string, optio
       }
       render();
     });
-    list.focus(); render();
+    screen.on('resize', render); list.focus(); render();
   });
 }

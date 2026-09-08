@@ -118,12 +118,12 @@ def create_conversations(fd, root):
     smoke["wait_state"](fd, root, lambda rows: len(rows) == 1 and rows[0]["status"] == "Needs Input")
     c = smoke["conversations"](root)[0]
     assert c["task"]["ownerList"] == "Empty list" and c["task"]["title"] == "Created from n"
-    key(fd, "i"); key(fd, "\r"); drain(fd, 1.5)
+    key(fd, "m"); key(fd, "\r"); drain(fd, 1.5)
     key(fd, "c")  # Global Conversations: n must be general, even with task-backed row selected.
     smoke["create"](fd, title="General via n")
     smoke["wait_state"](fd, root, lambda rows: len(rows) == 2 and rows[0]["status"] == "Needs Input")
     assert "task" not in smoke["conversations"](root)[0]
-    key(fd, "i"); key(fd, "\r"); drain(fd, 1.5)
+    key(fd, "m"); key(fd, "\r"); drain(fd, 1.5)
 
 
 def list_filter(fd, root):

@@ -47,14 +47,14 @@ def board(fd, root):
     text = frame(root, '70-board')
     assert all(label in text for label in ['1 Tasks', '2 Board Updates', '3 Conversations', 'Readable'])
     assert all(len(line) <= 70 for line in text.splitlines())
-    assert '2 Board Updates' in text.splitlines()[8] and '3 Conversations' in text.splitlines()[14]
+    assert '2 Board Updates' in text.splitlines()[11] and '3 Conversations' in text.splitlines()[16]
 
 
 def aggregate(fd, root, size):
     key(fd, '2')
     text = frame(root, size + '-aggregate')
     assert 'All progress' in text and 'Readable' in text
-    left = '\n'.join(line[:24 if size == '70' else 32] for line in text.splitlines())
+    left = '\n'.join(line[:28 if size == '70' else 40] for line in text.splitlines())
     assert '#1 Note' in left and '#2 Progress' in left and 'Readable' not in left
     key(fd, '\x1b[B')
     text = frame(root, size + '-individual-note')
@@ -76,13 +76,33 @@ def conversation(fd, root):
     key(fd, 'inspect 123nmi\x13')
     smoke['wait_state'](fd, root, lambda rows: rows and rows[0]['status'] == 'Needs Input')
     assert any(m['text'] == 'inspect 123nmi' for m in smoke['conversations'](root)[0]['messages'])
-    key(fd, 'i'); key(fd, '\r'); drain(fd, 1.5)
+    key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
     key(fd, '2'); assert 'Readable' in frame(root, 'back-to-board')
     key(fd, '3'); assert 'Demo complete' in frame(root, '70-conversation')
     assert smoke['conversations'](root)[0]['status'] == 'For Review'
     key(fd, '\r'); assert 'Open' in frame(root, '70-open-conversation')
     assert smoke['conversations'](root)[0]['status'] == 'Finished'
     key(fd, '\x1b'); assert 'Preview' in frame(root, '70-left-focus')
+    existing_message(fd, root)
+
+
+def existing_message(fd, root):
+    key(fd, '\r')
+    count = len(smoke['conversations'](root)[0]['messages'])
+    key(fd, 'm'); key(fd, 'cancel this')
+    text = frame(root, 'inline-existing')
+    assert 'Demo complete' in text and 'Message' in text
+    assert next(line for line in text.splitlines() if 'Message' in line).index('Message') > 28
+    resize(fd, 100, 32); drain(fd, .5)
+    text = frame(root, 'inline-existing-resize')
+    assert 'Demo complete' in text and 'cancel this' in text
+    key(fd, '\x1b')
+    assert len(smoke['conversations'](root)[0]['messages']) == count
+    key(fd, 'm'); key(fd, 'Follow up\rSecond line\x13')
+    smoke['wait_state'](fd, root, lambda rows: any(m['text'] == 'Follow up\nSecond line' for m in rows[0]['messages']))
+    smoke['wait_state'](fd, root, lambda rows: rows[0]['status'] == 'Needs Input')
+    key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
+    resize(fd, 70, 24); drain(fd, .5)
 
 
 def exercise(fd, root):
@@ -90,7 +110,7 @@ def exercise(fd, root):
     assert 'Tasks' in frame(root, 'list')
     text = frame(root, '100-details')
     assert 'Task Workspace' in text and 'Task List: Task Shark Demo' in text
-    assert '2 Board Updates' in text.splitlines()[10] and '3 Conversations' in text.splitlines()[18]
+    assert '2 Board Updates' in text.splitlines()[14] and '3 Conversations' in text.splitlines()[20]
     assert all(label in text for label in ['1 Tasks', '2 Board Updates', '3 Conversations', 'Preview'])
     key(fd, '3'); assert 'No conversations for this task' in frame(root, 'empty-conversations')
     board(fd, root)

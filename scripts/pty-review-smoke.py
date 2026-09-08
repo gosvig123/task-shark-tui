@@ -17,7 +17,7 @@ def approval(fd, columns, rows):
     key(fd, "m")
     key(fd, "long approval\x13")
     drain(fd, 1)
-    output = key(fd, "i")
+    output = key(fd, "m")
     assert b"Approval" in output and b"detail 1:" in output, output[-1000:]
     output = key(fd, "\x1b[F")
     assert b"80" in output, output[-1000:]  # Blessed sends only changed cells after scrolling.
@@ -31,7 +31,7 @@ def long_approvals(root):
         drain(fd, 1)
         smoke["create"](fd, True, "Unicode fixture 世界")
         wait_state(fd, root, lambda rows: rows and rows[0]["status"] == "Needs Input")
-        key(fd, "i"); key(fd, "\r"); drain(fd, 1.5)
+        key(fd, "m"); key(fd, "\r"); drain(fd, 1.5)
         approval(fd, 100, 32)
         approval(fd, 60, 20)
         assert smoke["conversations"](root)[0]["title"] == "Unicode fixture 世界"
@@ -76,7 +76,7 @@ def slow_refresh(root):
         key(fd, "c")
         smoke["create"](fd, True, "Slow refresh fixture")
         wait_state(fd, root, lambda rows: rows and rows[0]["status"] == "Needs Input")
-        key(fd, "i"); key(fd, "\r")
+        key(fd, "m"); key(fd, "\r")
         wait_state(fd, root, lambda rows: rows[0]["status"] == "For Review")
         key(fd, "m"); key(fd, "inspect\x13")
         wait_state(fd, root, lambda rows: rows[0]["status"] == "Needs Input")

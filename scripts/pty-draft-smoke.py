@@ -25,7 +25,6 @@ def empty_and_cancel(fd, root):
 
 def delete_text(fd):
     key(fd, 'n'); key(fd, 'Throwaway\rall text'); key(fd, '\x15')
-    key(fd, 'Delete this'); key(fd, '\x17'); key(fd, '\x17')
     key(fd, 'Delete that'); key(fd, '\x1b\x7f'); key(fd, '\x1b\x7f')
     key(fd, 'Next word'); key(fd, '\x01'); key(fd, '\x1bd'); key(fd, '\x1bd')
 
@@ -37,7 +36,7 @@ def first_send(fd, root):
     key(fd, '\x0f')
     key(fd, 'Optional draft title\r')
     key(fd, 'fixture/model\r')
-    key(fd, '\x07')  # Ctrl-G: searchable workspace picker.
+    key(fd, '\x17')  # Ctrl-W: searchable workspace picker; preserves draft text.
     key(fd, 'Enter a directory'); key(fd, '\r')
     key(fd, root + '\r')
     smoke['resize'](fd, 60, 20); drain(fd)
@@ -48,7 +47,7 @@ def first_send(fd, root):
     assert row['title'] == 'Optional draft title' and row['workspace'] == root
     assert row['model'] == 'fixture/model' and 'task' not in row
     assert any(m['text'] == message for m in row['messages']), row['messages']
-    key(fd, 'i'); key(fd, '\r'); drain(fd, 1.5)
+    key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
     key(fd, 'g'); key(fd, '\x13')  # Saved transcript must not leak into a fresh draft.
     assert len(smoke['conversations'](root)) == 1
     key(fd, '\x1b')
@@ -58,14 +57,14 @@ def task_and_workspace(fd, root):
     key(fd, 'g'); key(fd, 'Linked draft text')
     key(fd, '\x14')  # Ctrl-T selects from automatically loaded tasks.
     key(fd, 'Work'); key(fd, '\r')
-    key(fd, '\x07'); key(fd, root); key(fd, '\r')
+    key(fd, '\x17'); key(fd, root); key(fd, '\r')
     assert len(smoke['conversations'](root)) == 1  # Choosing does not save.
     key(fd, '\x13')
     smoke['wait_state'](fd, root, lambda rows: len(rows) == 2 and rows[0]['status'] == 'Needs Input')
     row = smoke['conversations'](root)[0]
     assert row['task']['ownerList'] == 'Work' and row['workspace'] == root
     assert any(m['text'] == 'Linked draft text' for m in row['messages'])
-    key(fd, 'i'); key(fd, '\r'); drain(fd, 1.5)
+    key(fd, 'm'); key(fd, '\r'); drain(fd, 1.5)
 
 
 def main():

@@ -33,7 +33,7 @@ async function interactionKey(view: View, key: string): Promise<boolean> {
     if (key === 'f') { void view.boards.load(view.taskScope!.id); return true; }
     if (key === 'a' && view.workspaceFocus === 'right') { void view.boards.mark(view.taskScope!.id); return true; }
   }
-  if (['m', 'i', 'x', 'p', 'a'].includes(key) && (view.workspaceFocus === 'left' || section !== 'Conversations')) {
+  if (['m', 'x', 'p', 'a'].includes(key) && (view.workspaceFocus === 'left' || section !== 'Conversations')) {
     view.notice = 'Enter opens the preview for interaction. Board review: a reviews all loaded entries.'; return true;
   }
   return false;
